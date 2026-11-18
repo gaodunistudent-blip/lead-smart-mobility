@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#111827">
+  <meta name="description" content="LEAD helps you explore Indonesian cities, find places, and plan journeys.">
+  <title>LEAD — Smart Mobility</title>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="#" onclick="navigateTo('home'); return false;" aria-label="LEAD home">
+        <span class="brand-mark"><i class="fa-solid fa-location-arrow"></i></span>
+        <span>LEAD<small>SMART MOBILITY</small></span>
+      </a>
+      <div class="sidebar-label" data-i18n="workspace">WORKSPACE</div>
+      <nav class="primary-nav" aria-label="Main navigation">
+        <button onclick="navigateTo('home')" class="nav-link active"><i class="fa-solid fa-house"></i><span data-i18n="navOverview">Overview</span></button>
+        <button onclick="navigateTo('explore')" class="nav-link"><i class="fa-solid fa-compass"></i><span data-i18n="navExplore">Explore cities</span></button>
+        <button onclick="navigateTo('navigation')" class="nav-link"><i class="fa-solid fa-route"></i><span data-i18n="navRoute">Plan a route</span></button>
+        <button onclick="navigateTo('voice')" class="nav-link"><i class="fa-solid fa-microphone"></i><span data-i18n="navVoice">Voice assistant</span></button>
+      </nav>
+      <div class="sidebar-label" data-i18n="myLead">MY LEAD</div>
+      <nav class="primary-nav" aria-label="Personal navigation">
+        <button onclick="navigateTo('vehicle')" class="nav-link"><i class="fa-solid fa-car-side"></i><span data-i18n="navVehicles">Vehicles</span></button>
+        <button onclick="navigateTo('history')" class="nav-link"><i class="fa-solid fa-clock-rotate-left"></i><span data-i18n="navHistory">Journey history</span></button>
+        <button onclick="navigateTo('saved')" class="nav-link"><i class="fa-solid fa-bookmark"></i><span data-i18n="navSaved">Saved places</span></button>
+        <button onclick="navigateTo('profile')" class="nav-link"><i class="fa-solid fa-user"></i><span data-i18n="navProfile">Profile & settings</span></button>
+        <button onclick="navigateTo('premium')" class="nav-link"><i class="fa-solid fa-crown"></i><span data-i18n="navPremium">LEAD Premium</span></button>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="status-dot"></div>
+        <div><strong data-i18n="country">Indonesia</strong><small data-i18n="exploreWithConfidence">Explore with confidence</small></div>
+      </div>
+    </aside>
+
+    <div class="workspace">
+      <header class="topbar">
+        <div class="mobile-brand"><span class="brand-mark"><i class="fa-solid fa-location-arrow"></i></span> LEAD</div>
+        <div class="topbar-title"><span class="eyebrow" data-i18n="topEyebrow">YOUR JOURNEY, SIMPLIFIED</span><strong data-i18n="topTitle">Smart mobility for Indonesia</strong></div>
+        <div class="topbar-actions">
+          <span class="connection-chip"><span class="status-dot"></span> Ready to explore</span>
+          <button class="avatar-button" onclick="navigateTo('profile')" aria-label="Open profile"><i class="fa-solid fa-user"></i></button>
+        </div>
+      </header>
+
+      <div id="app-startup-error" class="startup-error" role="alert" hidden></div>
+
+      <main class="content-area">
+        <section id="welcome-screen" class="screen active">
+          <div class="welcome-layout">
+            <div class="welcome-copy">
+              <span class="eyebrow" data-i18n="welcomeEyebrow">WELCOME TO LEAD</span>
+              <h1>Move through<br><em>Indonesia</em> better.</h1>
+              <p data-i18n="welcomeDescription">Find places, plan a route, and make every trip a little easier—with local details designed for the way Indonesia moves.</p>
+              <div class="welcome-points">
+                <span><i class="fa-solid fa-map-location-dot"></i> <span data-i18n="featureCities">Explore 14 cities</span></span>
+                <span><i class="fa-solid fa-car-side"></i> <span data-i18n="featureRoutes">Routes for your vehicle</span></span>
+                <span><i class="fa-solid fa-volume-high"></i> <span data-i18n="featureVoice">Voice support</span></span>
+              </div>
+            </div>
+            <div class="welcome-card">
+              <div class="card-icon"><i class="fa-solid fa-compass"></i></div>
+              <h2 data-i18n="startJourney">Start your journey</h2>
+              <p data-i18n="startJourneyDescription">Try the interactive demo or sign in to continue.</p>
+              <div class="welcome-container">
+                <button class="btn btn-primary btn-block" onclick="showScreen('login-screen')"><span data-i18n="signIn">Sign in</span> <i class="fa-solid fa-arrow-right"></i></button>
+                <button class="btn btn-quiet btn-block" onclick="showScreen('register-screen')" data-i18n="createAccount">Create an account</button>
+              </div>
+              <div class="demo-note"><i class="fa-solid fa-circle-info"></i> <span data-i18n="demoNote">Demo data stays in this browser.</span></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="login-screen" class="screen auth-screen">
+          <div class="auth-card">
+            <button class="back-link" onclick="showScreen('welcome-screen')"><i class="fa-solid fa-arrow-left"></i> Back</button>
+            <span class="eyebrow">GOOD TO SEE YOU</span>
+            <h1>Sign in to LEAD</h1>
+            <p>This prototype uses local demo sign-in; it does not send your password to a server.</p>
+            <form onsubmit="handleLogin(event)">
+              <label for="login-username">Name or email</label>
+              <input id="login-username" type="text" autocomplete="username" required placeholder="e.g. Maya">
+              <label for="login-password">Password</label>
+              <input id="login-password" type="password" autocomplete="current-password" required placeholder="Any password for demo">
+              <button class="btn btn-primary btn-block" type="submit">Continue <i class="fa-solid fa-arrow-right"></i></button>
+            </form>
+            <p class="auth-switch">New to LEAD? <button onclick="showScreen('register-screen')">Create an account</button></p>
+          </div>
+        </section>
+
+        <section id="register-screen" class="screen auth-screen">
+          <div class="auth-card">
+            <button class="back-link" onclick="showScreen('welcome-screen')"><i class="fa-solid fa-arrow-left"></i> Back</button>
+            <span class="eyebrow">MAKE IT YOURS</span>
+            <h1>Create your profile</h1>
+            <p>Registration is simulated in this prototype and saved only in your browser.</p>
+            <form onsubmit="handleRegister(event)">
+              <label for="reg-username">Name</label>
+              <input id="reg-username" type="text" autocomplete="name" required placeholder="Your name">
+              <label for="reg-email">Email</label>
+              <input id="reg-email" type="email" autocomplete="email" required placeholder="you@example.com">
+              <label for="reg-password">Password</label>
+              <input id="reg-password" type="password" autocomplete="new-password" required minlength="4" placeholder="At least 4 characters">
+              <label for="reg-language">Language</label>
+              <select id="reg-language"><option value="en">English</option><option value="id">Bahasa Indonesia</option></select>
+              <button class="btn btn-primary btn-block" type="submit">Create profile <i class="fa-solid fa-arrow-right"></i></button>
+            </form>
+            <p class="auth-switch">Already have a profile? <button onclick="showScreen('login-screen')">Sign in</button></p>
+          </div>
+        </section>
+
+        <section id="home-screen" class="screen">
+          <div class="page-heading heading-row">
+            <div><span class="eyebrow" data-i18n="dashboard">YOUR DASHBOARD</span><h1 id="user-name">Welcome to LEAD</h1><p data-i18n="dashboardPrompt">Where would you like to go today?</p></div>
+            <div class="weather-pill" id="current-weather"><i class="fa-solid fa-cloud-sun"></i><span>Checking local weather…</span></div>
+          </div>
+          <div class="home-grid">
+            <div class="map-panel panel">
+              <div class="map-toolbar">
+                <div><span class="panel-title" data-i18n="mapTitle">Explore the map</span><span class="panel-subtitle" data-i18n="mapSubtitle">OpenStreetMap · Indonesia</span></div>
+                <button class="btn btn-small btn-outline" onclick="centerOnCurrentLocation()"><i class="fa-solid fa-crosshairs"></i> <span data-i18n="myLocation">My location</span></button>
+              </div>
+              <form class="search-bar" onsubmit="event.preventDefault(); handleSearch();">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input id="search-input" type="search" placeholder="Search a place or destination…" data-i18n-placeholder="searchPlaceholder" autocomplete="off">
+                <button class="btn btn-primary" type="submit" data-i18n="search">Search</button>
+              </form>
+              <div id="map" role="application" aria-label="Map of Indonesia"></div>
+              <div class="map-caption"><span><span class="status-dot"></span> <span id="location-status-text">Checking location…</span></span><span>Map © OpenStreetMap contributors</span></div>
+            </div>
+            <aside class="home-side">
+              <div class="panel quick-panel">
+                <div class="panel-heading"><div><span class="eyebrow">QUICK ACCESS</span><h2>Your vehicle</h2></div><i class="fa-solid fa-car-side panel-icon"></i></div>
+                <div class="active-vehicle-card"><span class="vehicle-mini-icon"><i class="fa-solid fa-motorcycle"></i></span><div><strong id="active-vehicle">No vehicle selected</strong><small>Active for route planning</small></div></div>
+                <button class="btn btn-outline btn-block" onclick="navigateTo('vehicle')">Manage vehicles</button>
+              </div>
+              <div class="panel explore-panel">
+                <div class="panel-heading"><div><span class="eyebrow">DISCOVER</span><h2>Explore nearby</h2></div><i class="fa-solid fa-location-dot panel-icon"></i></div>
+                <p>Browse local highlights and useful places across Indonesia.</p>
+                <button class="btn btn-primary btn-block" onclick="navigateTo('explore')">Browse cities <i class="fa-solid fa-arrow-right"></i></button>
+              </div>
+              <div class="panel safety-note"><i class="fa-solid fa-shield-heart"></i><p><strong>Travel thoughtfully.</strong><br>Routes and weather in this demo may be estimates. Always follow local road signs.</p></div>
+            </aside>
+          </div>
+        </section>
+
+        <section id="city-screen" class="screen">
+          <div class="page-heading"><span class="eyebrow" data-i18n="localDiscovery">LOCAL DISCOVERY</span><h1 data-i18n="cityTitle">Explore Indonesian cities</h1><p data-i18n="cityDescription">Choose a city to find food, services, and places worth a stop.</p></div>
+          <div class="panel">
+            <label class="search-bar city-search"><i class="fa-solid fa-magnifying-glass"></i><input type="search" placeholder="Filter cities…" data-i18n-placeholder="filterCities" oninput="filterCities(this.value)"></label>
+            <div id="city-grid" class="city-grid"></div>
+          </div>
+        </section>
+
+        <section id="place-screen" class="screen">
+          <div class="page-heading heading-row">
+            <div><button class="back-link" onclick="showScreen('city-screen')"><i class="fa-solid fa-arrow-left"></i> <span data-i18n="allCities">All cities</span></button><span class="eyebrow" data-i18n="cityGuide">CITY GUIDE</span><h1 id="selected-city-name">Places</h1><p data-i18n="routeOptionsPrompt">Pick a place to see route options.</p></div>
+            <button class="btn btn-outline" onclick="navigateTo('home')"><i class="fa-solid fa-map"></i> <span data-i18n="backToMap">Back to map</span></button>
+          </div>
+          <div class="panel">
+            <div class="filter-row">
+              <label><span data-i18n="category">Category</span><select id="category-filter" onchange="filterPlaces()"><option value="all" data-i18n="allCategories">All categories</option><option value="restaurant">Restaurant</option><option value="warung">Warung</option><option value="cafe">Cafe</option><option value="hospital">Hospital</option><option value="fuel">Fuel</option><option value="charging">EV charging</option><option value="shop">Shops & sights</option></select></label>
+              <label><span data-i18n="distance">Distance</span><select id="distance-filter" onchange="filterPlaces()"><option value="any" data-i18n="anyDistance">Any distance</option><option value="1">Within 1 km</option><option value="3">Within 3 km</option><option value="10">Within 10 km</option></select></label>
+              <label><span data-i18n="timeOfDay">Time of day</span><select id="time-filter" onchange="filterPlaces()"><option value="any" data-i18n="anyTime">Any time</option><option value="now" data-i18n="openNowDemo">Open now (demo)</option><option value="morning">Morning</option><option value="afternoon">Afternoon</option><option value="evening">Evening</option><option value="night">Night</option></select></label>
+            </div>
+            <div id="place-list" class="place-grid"></div>
+          </div>
+        </section>
+
+        <section id="voice-screen" class="screen">
+          <div class="page-heading"><span class="eyebrow" data-i18n="handsFreeHelp">HANDS-FREE HELP</span><h1 data-i18n="voiceTitle">LEAD voice assistant</h1><p data-i18n="voiceDescription">Ask about routes, rain, food, and nearby services. Responses are demo-generated.</p></div>
+          <div class="voice-layout">
+            <div class="panel voice-panel">
+              <div class="panel-heading"><div><span class="eyebrow">VOICE CONTROL</span><h2>Talk to LEAD</h2></div><i class="fa-solid fa-microphone-lines panel-icon"></i></div>
+              <div class="voice-center"><button id="voice-btn" class="voice-button" onclick="toggleVoice()" aria-label="Start voice input"><i class="fa-solid fa-microphone"></i></button><strong id="voice-status">Tap the microphone to speak</strong><small>Speech recognition depends on browser support and permission.</small></div>
+              <label for="voice-language">Voice language</label>
+              <select id="voice-language" onchange="changeVoiceLanguage(this.value)"><option value="id">Bahasa Indonesia</option><option value="jv">Javanese</option><option value="su">Sundanese</option><option value="mad">Madurese</option><option value="min">Minangkabau</option><option value="bug">Buginese</option><option value="bal">Balinese</option><option value="btk">Batak</option><option value="id-medan">Medan Indonesian</option><option value="en">English</option></select>
+              <ul id="voice-sample-phrases" class="sample-phrases"></ul>
+              <button class="btn btn-outline btn-block" onclick="openVoiceAIOverlay()"><i class="fa-regular fa-comment-dots"></i> Use text assistant instead</button>
+            </div>
+            <div class="panel transcript-panel"><div class="panel-heading"><div><span class="eyebrow">CONVERSATION</span><h2>Recent messages</h2></div></div><div id="voice-conversation" class="conversation"><div class="conversation-empty"><i class="fa-solid fa-comments"></i><p>Your conversation will appear here.</p></div></div></div>
+          </div>
+        </section>
+
+        <section id="vehicle-screen" class="screen">
+          <div class="page-heading heading-row"><div><span class="eyebrow" data-i18n="personalizeRoutes">PERSONALIZE YOUR ROUTES</span><h1 data-i18n="yourVehicles">Your vehicles</h1><p data-i18n="vehicleDescription">Add up to three vehicles to get more relevant route suggestions.</p></div><button class="btn btn-primary" onclick="AppState.editingVehicleIndex = undefined; showVehicleModal()"><i class="fa-solid fa-plus"></i> <span data-i18n="addVehicle">Add vehicle</span></button></div>
+          <div id="vehicle-list" class="vehicle-list"></div>
+          <div class="panel vehicle-hint"><i class="fa-solid fa-circle-info"></i><p>Vehicle-aware route suggestions are estimates in this prototype. Always verify restrictions on the road.</p></div>
+        </section>
+
+        <section id="history-screen" class="screen">
+          <div class="page-heading"><span class="eyebrow" data-i18n="travelLog">YOUR TRAVEL LOG</span><h1 data-i18n="journeyHistory">Journey history</h1><p data-i18n="historyDescription">Your completed route plans are stored locally in this browser.</p></div>
+          <div id="history-list" class="panel list-panel"></div>
+        </section>
+
+        <section id="saved-screen" class="screen">
+          <div class="page-heading"><span class="eyebrow" data-i18n="quickAccess">QUICK ACCESS</span><h1 data-i18n="savedPlaces">Saved places</h1><p data-i18n="savedDescription">Keep useful destinations close at hand.</p></div>
+          <div id="saved-places-list" class="saved-grid"></div>
+        </section>
+
+        <section id="profile-screen" class="screen">
+          <div class="page-heading"><span class="eyebrow" data-i18n="yourAccount">YOUR ACCOUNT</span><h1 data-i18n="profileSettings">Profile & settings</h1><p data-i18n="profileDescription">Manage your local demo profile and preferences.</p></div>
+          <div class="profile-layout">
+            <div class="panel profile-card"><div class="profile-avatar"><i class="fa-solid fa-user"></i></div><h2 id="profile-name">Guest</h2><p id="profile-email">Sign in to personalize your experience</p><div class="profile-badges"><span class="badge badge-free">Free</span></div></div>
+            <div class="panel profile-menu">
+              <div class="settings-row"><div><strong>Language</strong><small>Choose the app display language</small></div><select id="setting-language" onchange="changeAppLanguage(this.value)"><option value="en">English</option><option value="id">Bahasa Indonesia</option></select></div>
+              <div class="settings-row"><div><strong>Location permission</strong><small>Used to center the map and estimate routes</small></div><span id="location-status-text" class="permission-state">Not checked</span></div>
+              <div class="settings-row"><div><strong>Referral code</strong><small>Share LEAD with a friend</small></div><div class="referral"><code id="referral-code">LEAD-ID-2026</code><button class="btn btn-small btn-outline" onclick="copyReferralCode()">Copy</button></div></div>
+              <button class="menu-item" onclick="navigateTo('history')"><i class="fa-solid fa-clock-rotate-left"></i><span>Journey history</span><i class="fa-solid fa-chevron-right"></i></button>
+              <button class="menu-item" onclick="navigateTo('saved')"><i class="fa-solid fa-bookmark"></i><span>Saved places</span><i class="fa-solid fa-chevron-right"></i></button>
+              <button class="menu-item logout-item" onclick="handleLogout()"><i class="fa-solid fa-arrow-right-from-bracket"></i><span>Sign out</span><i class="fa-solid fa-chevron-right"></i></button>
+            </div>
+          </div>
+        </section>
+
+        <section id="premium-screen" class="screen">
+          <div class="premium-hero"><span class="eyebrow" data-i18n="premiumEyebrow">MORE ROOM TO ROAM</span><div class="premium-crown"><i class="fa-solid fa-crown"></i></div><h1 data-i18n="premiumTitle">Make every trip count.</h1><p data-i18n="premiumDescription">Explore the LEAD Premium demo experience.</p><button class="btn btn-light" onclick="handlePremiumUpgrade()"><span data-i18n="tryPremium">Try Premium</span> <i class="fa-solid fa-arrow-right"></i></button><small data-i18n="noPayment">No payment is processed in this prototype.</small></div>
+          <div class="feature-grid"><div class="panel feature-card"><i class="fa-solid fa-route"></i><h3>Smarter route options</h3><p>Compare route types with vehicle-aware suggestions.</p></div><div class="panel feature-card"><i class="fa-solid fa-bookmark"></i><h3>Saved destinations</h3><p>Keep your favorite places ready for next time.</p></div><div class="panel feature-card"><i class="fa-solid fa-language"></i><h3>Local voice phrases</h3><p>Try sample phrases across supported regional languages.</p></div></div>
+        </section>
+      </main>
+      <footer class="app-footer"><span>LEAD · Smart Mobility Platform for Indonesia</span><span>Prototype · Map data © OpenStreetMap contributors</span></footer>
+    </div>
+  </div>
+
+  <div id="nav-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="route-modal-title">
+    <div class="modal-card">
+      <button class="modal-close" onclick="closeNavModal()" aria-label="Close route options"><i class="fa-solid fa-xmark"></i></button>
+      <span class="eyebrow">ROUTE OPTIONS</span><h2 id="route-modal-title">Plan your journey</h2>
+      <div id="route-options" class="route-options"></div>
+      <div id="route-weather-info" class="weather-note"><i class="fa-solid fa-cloud-sun"></i><span>Checking weather…</span></div>
+      <div class="modal-actions"><button class="btn btn-outline" onclick="saveSelectedPlace()"><i class="fa-solid fa-bookmark"></i> Save place</button><button class="btn btn-primary" onclick="startNavigation()">Show route on map <i class="fa-solid fa-arrow-right"></i></button></div>
+    </div>
+  </div>
+
+  <div id="vehicle-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="vehicle-modal-title">
+    <div class="modal-card">
+      <button class="modal-close" onclick="closeVehicleModal()" aria-label="Close vehicle form"><i class="fa-solid fa-xmark"></i></button>
+      <span class="eyebrow">YOUR GARAGE</span><h2 id="vehicle-modal-title">Add a vehicle</h2>
+      <form id="vehicle-form" onsubmit="handleAddVehicle(event)">
+        <label for="vehicle-type">Vehicle type</label><select id="vehicle-type" onchange="updateVehicleFields()"><option value="motorcycle">Motorcycle</option><option value="car">Car</option><option value="ev">Electric vehicle</option><option value="truck">Truck</option><option value="angkot">Angkot</option><option value="bus">Bus</option></select>
+        <label for="vehicle-brand">Make and model</label><input id="vehicle-brand" required placeholder="e.g. Honda Vario 150">
+        <label for="vehicle-plate">License plate</label><input id="vehicle-plate" placeholder="Optional">
+        <div id="ev-fields" class="conditional-fields hidden"><label for="vehicle-battery">Battery (%)</label><input id="vehicle-battery" type="number" min="0" max="100" placeholder="75"><label for="vehicle-range">Estimated range (km)</label><input id="vehicle-range" type="number" min="0" placeholder="400"></div>
+        <div id="truck-fields" class="conditional-fields hidden"><label for="vehicle-height">Height (m)</label><input id="vehicle-height" type="number" min="0" step="0.1"><label for="vehicle-width">Width (m)</label><input id="vehicle-width" type="number" min="0" step="0.1"><label for="vehicle-weight">Weight (tonnes)</label><input id="vehicle-weight" type="number" min="0" step="0.1"></div>
+        <div class="modal-actions"><button class="btn btn-outline" type="button" onclick="closeVehicleModal()">Cancel</button><button class="btn btn-primary" type="submit">Save vehicle</button></div>
+      </form>
+    </div>
+  </div>
+
+  <div id="rain-alert-card" class="rain-alert hidden" role="status"><div class="rain-alert-icon"><i class="fa-solid fa-cloud-showers-heavy"></i></div><div><strong>Weather heads-up</strong><p>Weather along this route is simulated. Check local forecasts before you travel.</p></div><button onclick="dismissRainAlert()" aria-label="Dismiss weather alert"><i class="fa-solid fa-xmark"></i></button></div>
+
+  <div id="voice-ai-overlay" class="chat-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="chat-title">
+    <div class="chat-window"><div class="chat-header"><div><span class="eyebrow">LEAD ASSISTANT</span><h2 id="chat-title">Ask a travel question</h2></div><button class="modal-close" onclick="closeVoiceAIOverlay()" aria-label="Close assistant"><i class="fa-solid fa-xmark"></i></button></div>
+      <div id="voice-ai-conversation" class="chat-conversation"><div class="voice-message ai"><i class="fa-solid fa-robot"></i><span>Hi! I can help with routes, rain, and nearby places. My answers are simulated for this demo.</span></div></div>
+      <div class="chat-compose"><input id="voice-ai-text-input" placeholder="Ask about your journey…" onkeypress="handleVoiceAIKeypress(event)"><button class="btn btn-primary" onclick="sendVoiceAIMessage()" aria-label="Send message"><i class="fa-solid fa-paper-plane"></i></button></div>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
