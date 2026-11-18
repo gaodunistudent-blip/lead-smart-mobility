@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#581e27">
+  <meta name="theme-color" content="#c62828">
   <meta name="description" content="LEAD helps you explore Indonesian cities, find places, and plan journeys.">
   <title>LEAD — Smart Mobility</title>
 </head>
@@ -26,6 +26,7 @@
         <button onclick="navigateTo('vehicle')" class="nav-link"><i class="fa-solid fa-car-side"></i><span data-i18n="navVehicles">Vehicles</span></button>
         <button onclick="navigateTo('history')" class="nav-link"><i class="fa-solid fa-clock-rotate-left"></i><span data-i18n="navHistory">Journey history</span></button>
         <button onclick="navigateTo('saved')" class="nav-link"><i class="fa-solid fa-bookmark"></i><span data-i18n="navSaved">Saved places</span></button>
+        <button onclick="navigateTo('lists')" class="nav-link"><i class="fa-solid fa-people-group"></i><span>Shared lists</span></button>
         <button onclick="navigateTo('profile')" class="nav-link"><i class="fa-solid fa-user"></i><span data-i18n="navProfile">Profile & settings</span></button>
         <button onclick="navigateTo('premium')" class="nav-link"><i class="fa-solid fa-crown"></i><span data-i18n="navPremium">LEAD Premium</span></button>
       </nav>
@@ -170,7 +171,7 @@
 
         <section id="place-screen" class="screen">
           <div class="page-heading heading-row">
-            <div><button class="back-link" onclick="showScreen('city-screen')"><i class="fa-solid fa-arrow-left"></i> <span data-i18n="allCities">All cities</span></button><span class="eyebrow" data-i18n="cityGuide">CITY GUIDE</span><h1 id="selected-city-name">Places</h1><p data-i18n="routeOptionsPrompt">Pick a place to see route options.</p></div>
+            <div><button class="back-link" onclick="showScreen('city-screen')"><i class="fa-solid fa-arrow-left"></i> <span data-i18n="allCities">All cities</span></button><span class="eyebrow" data-i18n="cityGuide">CITY GUIDE</span><h1 id="selected-city-name">Places</h1><p data-i18n="routeOptionsPrompt">Pick a place to see route options.</p><p id="city-local-time" class="city-local-time" aria-live="polite"></p></div>
             <button class="btn btn-outline" onclick="navigateTo('home')"><i class="fa-solid fa-map"></i> <span data-i18n="backToMap">Back to map</span></button>
           </div>
           <div class="panel city-map-panel">
@@ -192,6 +193,7 @@
               <label><span>To</span><input id="visit-end" type="time" onchange="filterPlaces()"></label>
               <button class="btn btn-outline filter-reset" onclick="resetPlaceFilters()"><i class="fa-solid fa-arrow-rotate-left"></i> Reset filters</button>
             </div>
+            <p id="city-time-note" class="filter-note">Date and opening-hour filters use the selected city's local time.</p>
             <p id="place-hours-note" class="filter-note" aria-live="polite">Any time · places with unknown opening hours are marked.</p>
             <div id="place-list" class="place-grid"></div>
           </div>
@@ -228,6 +230,13 @@
           <div id="saved-places-list" class="saved-grid"></div>
         </section>
 
+        <section id="lists-screen" class="screen">
+          <div class="page-heading heading-row"><div><span class="eyebrow">GO TOGETHER</span><h1>Shared lists</h1><p>Create Friends, Dates, or custom lists. Invite links share a snapshot; live sync is not available in this prototype.</p></div><button class="btn btn-primary" onclick="openSharedListModal()"><i class="fa-solid fa-plus"></i> Create a list</button></div>
+          <div id="shared-lists-list" class="shared-list-grid"></div>
+          <div id="shared-list-detail" class="panel shared-list-detail hidden"></div>
+          <p class="prototype-disclaimer"><i class="fa-solid fa-circle-info"></i> Lists, check-ins, streaks, and points are stored in this browser. Weekly visits are self-reported and are not location-verified.</p>
+        </section>
+
         <section id="profile-screen" class="screen">
           <div class="page-heading"><span class="eyebrow" data-i18n="yourAccount">YOUR ACCOUNT</span><h1 data-i18n="profileSettings">Profile & settings</h1><p data-i18n="profileDescription">Manage your local demo profile and preferences.</p></div>
           <div class="profile-layout">
@@ -239,6 +248,7 @@
               <button class="menu-item" onclick="navigateTo('vehicle')"><i class="fa-solid fa-car-side"></i><span>Manage vehicles</span><i class="fa-solid fa-chevron-right"></i></button>
               <button class="menu-item" onclick="navigateTo('history')"><i class="fa-solid fa-clock-rotate-left"></i><span>Journey history</span><i class="fa-solid fa-chevron-right"></i></button>
               <button class="menu-item" onclick="navigateTo('saved')"><i class="fa-solid fa-bookmark"></i><span>Saved places</span><i class="fa-solid fa-chevron-right"></i></button>
+              <button class="menu-item" onclick="navigateTo('lists')"><i class="fa-solid fa-people-group"></i><span>Shared lists</span><i class="fa-solid fa-chevron-right"></i></button>
               <button class="menu-item" onclick="navigateTo('premium')"><i class="fa-solid fa-crown"></i><span>LEAD Premium</span><i class="fa-solid fa-chevron-right"></i></button>
               <button class="menu-item logout-item" onclick="handleLogout()"><i class="fa-solid fa-arrow-right-from-bracket"></i><span>Sign out</span><i class="fa-solid fa-chevron-right"></i></button>
             </div>
@@ -246,8 +256,17 @@
         </section>
 
         <section id="premium-screen" class="screen">
-          <div class="premium-hero"><span class="eyebrow" data-i18n="premiumEyebrow">MORE ROOM TO ROAM</span><div class="premium-crown"><i class="fa-solid fa-crown"></i></div><h1 data-i18n="premiumTitle">Make every trip count.</h1><p data-i18n="premiumDescription">Explore the LEAD Premium demo experience.</p><button class="btn btn-light" onclick="handlePremiumUpgrade()"><span data-i18n="tryPremium">Try Premium</span> <i class="fa-solid fa-arrow-right"></i></button><small data-i18n="noPayment">No payment is processed in this prototype.</small></div>
-          <div class="feature-grid"><div class="panel feature-card"><i class="fa-solid fa-route"></i><h3>Smarter route options</h3><p>Compare route types with vehicle-aware suggestions.</p></div><div class="panel feature-card"><i class="fa-solid fa-bookmark"></i><h3>Saved destinations</h3><p>Keep your favorite places ready for next time.</p></div><div class="panel feature-card"><i class="fa-solid fa-language"></i><h3>Local voice phrases</h3><p>Try sample phrases across supported regional languages.</p></div></div>
+          <div class="premium-hero"><span class="eyebrow">LEAD PREMIUM</span><div class="premium-crown"><i class="fa-solid fa-crown"></i></div><h1>More trips, <em>together.</em></h1><p>Shared plans and richer discovery, with the benefits clearly laid out before you subscribe.</p><button class="btn btn-primary" onclick="handlePremiumUpgrade()"><span id="premium-cta-label">Enable Premium demo</span> <i class="fa-solid fa-arrow-right"></i></button><small>Prototype only: no payment is processed, and pricing has not been configured.</small></div>
+          <div class="premium-plan panel"><div><span class="eyebrow">PREMIUM PLAN</span><h2>One plan for your crew</h2><p>Pricing and billing will appear here when subscriptions are connected.</p></div><span id="premium-status" class="premium-status">Demo access available</span></div>
+          <div class="feature-grid premium-benefits">
+            <div class="panel feature-card"><i class="fa-solid fa-people-group"></i><h3>Custom shared lists</h3><p>Create Friends lists for groups, Dates lists for two, and tailor a list for any outing.</p></div>
+            <div class="panel feature-card"><i class="fa-solid fa-map-location-dot"></i><h3>Shared saved places</h3><p>Collect places in a list and share an importable snapshot with selected people.</p></div>
+            <div class="panel feature-card"><i class="fa-solid fa-fire"></i><h3>Weekly streaks</h3><p>Log a weekly visit together, keep a streak, and see your progress at a glance.</p></div>
+            <div class="panel feature-card"><i class="fa-solid fa-star"></i><h3>Points & milestones</h3><p>Earn points for weekly activities and bonus points for four-week streak milestones.</p></div>
+            <div class="panel feature-card"><i class="fa-solid fa-magnifying-glass-location"></i><h3>Expanded discovery</h3><p>Explore a broader set of nearby restaurants, services, shopping, health, education, and attractions.</p></div>
+            <div class="panel feature-card"><i class="fa-solid fa-route"></i><h3>Mobility tools</h3><p>Keep vehicle-aware route previews, city-local time, weather context, saved places, and voice support together.</p></div>
+          </div>
+          <p class="premium-disclaimer">Sharing links create separate browser copies, not live collaborative lists. Payments, verified visits, and subscription billing are not connected in this demo.</p>
         </section>
       </main>
       <footer class="app-footer"><span>LEAD · Smart Mobility Platform for Indonesia</span><span>Prototype · Map data © OpenStreetMap contributors</span></footer>
@@ -264,6 +283,7 @@
       <span class="eyebrow">ROUTE OPTIONS</span><h2 id="route-modal-title">Plan your journey</h2>
       <div id="route-options" class="route-options"></div>
       <div id="route-weather-info" class="weather-note"><i class="fa-solid fa-cloud-sun"></i><span>Checking weather…</span></div>
+      <div class="shared-list-add-row"><label for="shared-list-picker">Add this place to a shared list</label><div><select id="shared-list-picker"><option value="">Choose a list</option></select><button class="btn btn-outline" onclick="addSelectedPlaceToSharedList()"><i class="fa-solid fa-people-group"></i> Add</button></div></div>
       <div class="modal-actions"><button class="btn btn-outline" onclick="saveSelectedPlace()"><i class="fa-solid fa-bookmark"></i> Save place</button><button id="start-route-button" class="btn btn-primary" onclick="startNavigation()" disabled>Show route on map <i class="fa-solid fa-arrow-right"></i></button></div>
     </div>
   </div>
@@ -279,6 +299,22 @@
         <div id="ev-fields" class="conditional-fields hidden"><label for="vehicle-battery">Battery (%)</label><input id="vehicle-battery" type="number" min="0" max="100" placeholder="75"><label for="vehicle-range">Estimated range (km)</label><input id="vehicle-range" type="number" min="0" placeholder="400"></div>
         <div id="truck-fields" class="conditional-fields hidden"><label for="vehicle-height">Height (m)</label><input id="vehicle-height" type="number" min="0" step="0.1"><label for="vehicle-width">Width (m)</label><input id="vehicle-width" type="number" min="0" step="0.1"><label for="vehicle-weight">Weight (tonnes)</label><input id="vehicle-weight" type="number" min="0" step="0.1"></div>
         <div class="modal-actions"><button class="btn btn-outline" type="button" onclick="closeVehicleModal()">Cancel</button><button class="btn btn-primary" type="submit">Save vehicle</button></div>
+      </form>
+    </div>
+  </div>
+
+  <div id="shared-list-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="shared-list-modal-title">
+    <div class="modal-card">
+      <button class="modal-close" onclick="closeSharedListModal()" aria-label="Close list form"><i class="fa-solid fa-xmark"></i></button>
+      <span class="eyebrow">PREMIUM LIST</span><h2 id="shared-list-modal-title">Create a shared list</h2>
+      <form id="shared-list-form" onsubmit="handleCreateSharedList(event)">
+        <label for="shared-list-type">List type</label><select id="shared-list-type" onchange="updateSharedListForm()"><option value="friends">Friends list</option><option value="dates">Dates list</option><option value="custom">Custom list</option></select>
+        <label for="shared-list-name">List name</label><input id="shared-list-name" required maxlength="60" placeholder="e.g. Weekend food crawl">
+        <label for="shared-list-city">Home city and time zone</label><select id="shared-list-city" required><option value="">Choose a city</option></select>
+        <label for="shared-list-members" id="shared-list-members-label">Other people (comma-separated)</label><input id="shared-list-members" required placeholder="e.g. Aisha, Budi">
+        <p id="shared-list-form-help" class="form-help">Add at least two other people to a Friends list.</p>
+        <p id="shared-list-error" class="form-error" role="alert"></p>
+        <div class="modal-actions"><button class="btn btn-outline" type="button" onclick="closeSharedListModal()">Cancel</button><button class="btn btn-primary" type="submit">Create list</button></div>
       </form>
     </div>
   </div>

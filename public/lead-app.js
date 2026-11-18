@@ -19,11 +19,16 @@ const AppState = {
     placeSearchError: '',
     routeWeather: null,
     dismissedRainAlertKey: null,
+    routeTimeZone: 'Asia/Jakarta',
     voiceRecognition: null,
     isVoiceActive: false,
     selectedCity: null,
     journeyHistory: [],
     savedPlaces: [],
+    sharedLists: [],
+    activeSharedListId: null,
+    cityPlacesCache: {},
+    cityClockTimer: null,
     isDemoMode: false,
     useRealAPIs: true,
     watchId: null,
@@ -50,20 +55,20 @@ const API_CONFIG = {
 
 // Indonesian Cities Data
 const cities = [
-    { id: 1, name: 'Jakarta', lat: -6.2088, lng: 106.8456, icon: 'fa-city' },
-    { id: 2, name: 'Surabaya', lat: -7.2575, lng: 112.7521, icon: 'fa-city' },
-    { id: 3, name: 'Bandung', lat: -6.9175, lng: 107.6191, icon: 'fa-city' },
-    { id: 4, name: 'Yogyakarta', lat: -7.7956, lng: 110.3695, icon: 'fa-city' },
-    { id: 5, name: 'Malang', lat: -7.9797, lng: 112.6304, icon: 'fa-city' },
-    { id: 6, name: 'Semarang', lat: -6.9667, lng: 110.4167, icon: 'fa-city' },
-    { id: 7, name: 'Medan', lat: 3.5952, lng: 98.6722, icon: 'fa-city' },
-    { id: 8, name: 'Denpasar', lat: -8.6705, lng: 115.2126, icon: 'fa-city' },
-    { id: 9, name: 'Palembang', lat: -2.9764, lng: 104.7758, icon: 'fa-city' },
-    { id: 10, name: 'Makassar', lat: -5.1477, lng: 119.4328, icon: 'fa-city' },
-    { id: 11, name: 'Balikpapan', lat: -1.2379, lng: 116.8529, icon: 'fa-city' },
-    { id: 12, name: 'Manado', lat: 1.4931, lng: 124.8464, icon: 'fa-city' },
-    { id: 13, name: 'Banda Aceh', lat: 5.5483, lng: 95.3238, icon: 'fa-city' },
-    { id: 14, name: 'Jayapura', lat: -2.5337, lng: 140.7181, icon: 'fa-city' }
+    { id: 1, name: 'Jakarta', lat: -6.2088, lng: 106.8456, timeZone: 'Asia/Jakarta', zoneLabel: 'WIB', icon: 'fa-city' },
+    { id: 2, name: 'Surabaya', lat: -7.2575, lng: 112.7521, timeZone: 'Asia/Jakarta', zoneLabel: 'WIB', icon: 'fa-city' },
+    { id: 3, name: 'Bandung', lat: -6.9175, lng: 107.6191, timeZone: 'Asia/Jakarta', zoneLabel: 'WIB', icon: 'fa-city' },
+    { id: 4, name: 'Yogyakarta', lat: -7.7956, lng: 110.3695, timeZone: 'Asia/Jakarta', zoneLabel: 'WIB', icon: 'fa-city' },
+    { id: 5, name: 'Malang', lat: -7.9797, lng: 112.6304, timeZone: 'Asia/Jakarta', zoneLabel: 'WIB', icon: 'fa-city' },
+    { id: 6, name: 'Semarang', lat: -6.9667, lng: 110.4167, timeZone: 'Asia/Jakarta', zoneLabel: 'WIB', icon: 'fa-city' },
+    { id: 7, name: 'Medan', lat: 3.5952, lng: 98.6722, timeZone: 'Asia/Jakarta', zoneLabel: 'WIB', icon: 'fa-city' },
+    { id: 8, name: 'Denpasar', lat: -8.6705, lng: 115.2126, timeZone: 'Asia/Makassar', zoneLabel: 'WITA', icon: 'fa-city' },
+    { id: 9, name: 'Palembang', lat: -2.9764, lng: 104.7758, timeZone: 'Asia/Jakarta', zoneLabel: 'WIB', icon: 'fa-city' },
+    { id: 10, name: 'Makassar', lat: -5.1477, lng: 119.4328, timeZone: 'Asia/Makassar', zoneLabel: 'WITA', icon: 'fa-city' },
+    { id: 11, name: 'Balikpapan', lat: -1.2379, lng: 116.8529, timeZone: 'Asia/Makassar', zoneLabel: 'WITA', icon: 'fa-city' },
+    { id: 12, name: 'Manado', lat: 1.4931, lng: 124.8464, timeZone: 'Asia/Makassar', zoneLabel: 'WITA', icon: 'fa-city' },
+    { id: 13, name: 'Banda Aceh', lat: 5.5483, lng: 95.3238, timeZone: 'Asia/Jakarta', zoneLabel: 'WIB', icon: 'fa-city' },
+    { id: 14, name: 'Jayapura', lat: -2.5337, lng: 140.7181, timeZone: 'Asia/Jayapura', zoneLabel: 'WIT', icon: 'fa-city' }
 ];
 
 // Sample Places Data by City
@@ -212,6 +217,7 @@ const placeCategories = [
     { group: 'Education', id: 'schools', label: 'Schools', icon: 'fa-school', tags: [['amenity', 'school']] },
     { group: 'Education', id: 'libraries', label: 'Libraries', icon: 'fa-book', tags: [['amenity', 'library']] },
     { group: 'Education', id: 'education', label: 'Educational institutions', icon: 'fa-graduation-cap', tags: [['amenity', 'college']] },
+    { group: 'Education', id: 'language-centers', label: 'Language centers', icon: 'fa-language', tags: [['amenity', 'language_school']] },
 
     { group: 'Fuel & Mobility', id: 'fuel', label: 'Gas stations', icon: 'fa-gas-pump', tags: [['amenity', 'fuel']] },
     { group: 'Fuel & Mobility', id: 'ev-charging', label: 'EV charging stations', icon: 'fa-charging-station', tags: [['amenity', 'charging_station']] },
@@ -237,7 +243,24 @@ const placeCategories = [
     { group: 'Leisure & Tourism', id: 'cinemas', label: 'Cinemas', icon: 'fa-film', tags: [['amenity', 'cinema']] },
     { group: 'Leisure & Tourism', id: 'hotels', label: 'Hotels', icon: 'fa-hotel', tags: [['tourism', 'hotel']] },
     { group: 'Leisure & Tourism', id: 'resorts', label: 'Resorts', icon: 'fa-umbrella-beach', tags: [['tourism', 'resort']] },
-    { group: 'Leisure & Tourism', id: 'sports', label: 'Sports facilities', icon: 'fa-futbol', tags: [['leisure', 'sports_centre']] }
+    { group: 'Leisure & Tourism', id: 'sports', label: 'Sports facilities', icon: 'fa-futbol', tags: [['leisure', 'sports_centre']] },
+    { group: 'Leisure & Tourism', id: 'gyms', label: 'Gyms & fitness centers', icon: 'fa-dumbbell', tags: [['leisure', 'fitness_centre']] },
+    { group: 'Personal Care', id: 'beauty-salons', label: 'Beauty salons', icon: 'fa-spa', tags: [['shop', 'beauty'], ['shop', 'hairdresser']] }
+];
+
+const cityDiscoveryTags = [
+    ['amenity', 'restaurant'], ['amenity', 'cafe'], ['amenity', 'fast_food'], ['amenity', 'food_court'],
+    ['shop', 'bakery'], ['shop', 'mall'], ['shop', 'clothes'], ['shop', 'shoes'],
+    ['shop', 'supermarket'], ['shop', 'convenience'], ['shop', 'books'], ['amenity', 'marketplace'],
+    ['amenity', 'bus_station'], ['railway', 'station'], ['amenity', 'taxi'], ['amenity', 'parking'],
+    ['amenity', 'hospital'], ['amenity', 'clinic'], ['amenity', 'pharmacy'], ['amenity', 'dentist'],
+    ['amenity', 'university'], ['amenity', 'school'], ['amenity', 'library'], ['amenity', 'language_school'],
+    ['amenity', 'fuel'], ['amenity', 'charging_station'], ['shop', 'car_repair'], ['shop', 'motorcycle'],
+    ['shop', 'tyres'], ['amenity', 'car_wash'], ['office', 'government'], ['amenity', 'police'],
+    ['amenity', 'bank'], ['amenity', 'atm'], ['tourism', 'attraction'], ['leisure', 'park'],
+    ['natural', 'beach'], ['tourism', 'museum'], ['amenity', 'cinema'], ['tourism', 'hotel'],
+    ['tourism', 'guest_house'], ['leisure', 'fitness_centre'], ['leisure', 'sports_centre'],
+    ['shop', 'beauty'], ['shop', 'hairdresser']
 ];
 
 function escapeHtml(value) {
@@ -248,6 +271,102 @@ function escapeHtml(value) {
         '"': '&quot;',
         "'": '&#39;'
     })[character]);
+}
+
+function getZonedDateParts(date, timeZone) {
+    const parts = new Intl.DateTimeFormat('en-GB', {
+        timeZone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        weekday: 'short',
+        hour: '2-digit',
+        minute: '2-digit',
+        hourCycle: 'h23'
+    }).formatToParts(date);
+    return Object.fromEntries(parts.filter(part => part.type !== 'literal').map(part => [part.type, part.value]));
+}
+
+function getDateKeyInTimeZone(date, timeZone) {
+    const parts = getZonedDateParts(date, timeZone);
+    return `${parts.year}-${parts.month}-${parts.day}`;
+}
+
+function formatTimeInTimeZone(date, timeZone) {
+    return new Intl.DateTimeFormat(currentLanguage === 'id' ? 'id-ID' : 'en-GB', {
+        timeZone,
+        hour: '2-digit',
+        minute: '2-digit',
+        hourCycle: 'h23'
+    }).format(date);
+}
+
+function formatTimestampInTimeZone(timestamp, timeZone) {
+    const date = new Date(timestamp);
+    if (!Number.isFinite(date.getTime())) return String(timestamp || 'Time unavailable');
+    const label = cities.find(city => city.timeZone === timeZone)?.zoneLabel || '';
+    const formatted = new Intl.DateTimeFormat(currentLanguage === 'id' ? 'id-ID' : 'en-GB', {
+        timeZone,
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hourCycle: 'h23'
+    }).format(date);
+    return `${formatted}${label ? ` ${label}` : ''}`;
+}
+
+function getWeekKeyInTimeZone(date, timeZone) {
+    const dateKey = getDateKeyInTimeZone(date, timeZone);
+    const weekStart = new Date(`${dateKey}T12:00:00Z`);
+    const weekday = (weekStart.getUTCDay() + 6) % 7;
+    weekStart.setUTCDate(weekStart.getUTCDate() - weekday);
+    return weekStart.toISOString().slice(0, 10);
+}
+
+function shiftWeekKey(weekKey, weeks) {
+    const date = new Date(`${weekKey}T12:00:00Z`);
+    date.setUTCDate(date.getUTCDate() + weeks * 7);
+    return date.toISOString().slice(0, 10);
+}
+
+function getCityForCoordinates(lat, lng) {
+    if (!Number.isFinite(Number(lat)) || !Number.isFinite(Number(lng))) return null;
+    return cities.reduce((nearest, city) => {
+        const distance = distanceBetweenKm(Number(lat), Number(lng), city.lat, city.lng);
+        return !nearest || distance < nearest.distance ? { city, distance } : nearest;
+    }, null)?.city || null;
+}
+
+function getRelevantCity(lat, lng) {
+    const selectedCity = AppState.selectedCity;
+    if (selectedCity && distanceBetweenKm(Number(lat), Number(lng), selectedCity.lat, selectedCity.lng) <= 30) {
+        return selectedCity;
+    }
+    return getCityForCoordinates(lat, lng);
+}
+
+function getTimeZoneForCoordinates(lat, lng) {
+    return getCityForCoordinates(lat, lng)?.timeZone || 'Asia/Jakarta';
+}
+
+function getListWeeklyStats(list, now = new Date()) {
+    const visitedWeeks = new Set((list.visits || []).map(visit => visit.weekKey).filter(Boolean));
+    const currentWeek = getWeekKeyInTimeZone(now, list.timeZone || 'Asia/Jakarta');
+    const completedThisWeek = visitedWeeks.has(currentWeek);
+    let cursor = completedThisWeek ? currentWeek : shiftWeekKey(currentWeek, -1);
+    let streak = 0;
+    while (visitedWeeks.has(cursor)) {
+        streak += 1;
+        cursor = shiftWeekKey(cursor, -1);
+    }
+    return {
+        currentWeek,
+        completedThisWeek,
+        streak,
+        points: Number(list.points) || visitedWeeks.size * 50
+    };
 }
 
 function initializeApp() {
@@ -270,6 +389,8 @@ function initializeApp() {
     } else {
         showScreen('home-screen');
     }
+    renderSharedLists();
+    processSharedListInvite();
 }
 
 function addDemoButton() {
@@ -353,14 +474,18 @@ function startDemoMode() {
         {
             from: 'Home',
             to: 'Warung Bu Sri',
-            date: '2024-01-15',
+            createdAt: new Date().toISOString(),
+            timeZone: 'Asia/Jakarta',
+            cityName: 'Jakarta',
             distance: '5.2 km',
             time: '15 min'
         },
         {
             from: 'Office',
             to: 'RS Umum Pusat',
-            date: '2024-01-14',
+            createdAt: new Date(Date.now() - 86400000).toISOString(),
+            timeZone: 'Asia/Jakarta',
+            cityName: 'Jakarta',
             distance: '3.8 km',
             time: '12 min'
         }
@@ -392,6 +517,7 @@ function showScreen(screenId) {
         'vehicle-screen': 'vehicle',
         'history-screen': 'history',
         'saved-screen': 'saved',
+        'lists-screen': 'lists',
         'profile-screen': 'profile',
         'premium-screen': 'premium'
     }[screenId];
@@ -445,6 +571,10 @@ function navigateTo(section) {
         case 'saved':
             loadSavedPlaces();
             showScreen('saved-screen');
+            break;
+        case 'lists':
+            loadSharedLists();
+            showScreen('lists-screen');
             break;
         case 'vehicle':
             loadVehicles();
@@ -515,6 +645,7 @@ function saveUserData() {
     localStorage.setItem('lead_active_vehicle', JSON.stringify(AppState.activeVehicle));
     localStorage.setItem('lead_journey_history', JSON.stringify(AppState.journeyHistory));
     localStorage.setItem('lead_saved_places', JSON.stringify(AppState.savedPlaces));
+    localStorage.setItem('lead_shared_lists', JSON.stringify(AppState.sharedLists));
 }
 
 function loadUserData() {
@@ -523,6 +654,7 @@ function loadUserData() {
     const activeVehicle = localStorage.getItem('lead_active_vehicle');
     const journeyHistory = localStorage.getItem('lead_journey_history');
     const savedPlaces = localStorage.getItem('lead_saved_places');
+    const sharedLists = localStorage.getItem('lead_shared_lists');
 
     if (user) {
         AppState.currentUser = JSON.parse(user);
@@ -539,11 +671,20 @@ function loadUserData() {
     if (savedPlaces) {
         AppState.savedPlaces = JSON.parse(savedPlaces);
     }
+    if (sharedLists) {
+        AppState.sharedLists = JSON.parse(sharedLists);
+    }
 
     updateUI();
 }
 
 function updateUI() {
+    const premiumStatus = document.getElementById('premium-status');
+    const premiumCta = document.getElementById('premium-cta-label');
+    const hasPremium = Boolean(AppState.currentUser?.isPremium);
+    if (premiumStatus) premiumStatus.textContent = hasPremium ? 'Premium demo active' : 'Demo access available';
+    if (premiumCta) premiumCta.textContent = hasPremium ? 'Premium demo active' : 'Enable Premium demo';
+
     if (AppState.currentUser) {
         document.getElementById('user-name').textContent = t('welcome') + ', ' + AppState.currentUser.username;
         document.getElementById('profile-name').textContent = AppState.currentUser.username;
@@ -844,7 +985,12 @@ async function fetchWeather() {
             throw new Error('Weather service returned an incomplete current forecast.');
         }
         const description = describeWeatherCode(data.current.weather_code);
-        setWeatherLabel(`${description}, ${Math.round(data.current.temperature_2m)}°C`, weatherIconForCode(data.current.weather_code));
+        const timeZone = getTimeZoneForCoordinates(lat, lng);
+        const city = getCityForCoordinates(lat, lng);
+        const localTime = data.current.time
+            ? ` · ${formatTimeInTimeZone(new Date(`${data.current.time}:00Z`), timeZone)} ${city?.zoneLabel || ''}`
+            : '';
+        setWeatherLabel(`${description}, ${Math.round(data.current.temperature_2m)}°C${localTime}`, weatherIconForCode(data.current.weather_code));
         return data.current;
     } catch (error) {
         setWeatherLabel('Local weather unavailable', 'fa-circle-exclamation');
@@ -865,11 +1011,33 @@ function loadCities() {
         cityCard.setAttribute('data-city-name', city.name.toLowerCase());
         cityCard.innerHTML = `
             <i class="fas ${city.icon}"></i>
-            <h3>${city.name}</h3>
+            <h3>${escapeHtml(city.name)}</h3>
+            <span class="city-clock" id="city-clock-${city.id}"></span>
         `;
         cityCard.onclick = () => selectCity(city);
         cityGrid.appendChild(cityCard);
+        updateCityClock(city);
     });
+
+    const citySelect = document.getElementById('shared-list-city');
+    if (citySelect) {
+        citySelect.replaceChildren(new Option('Choose a city', ''));
+        cities.forEach(city => citySelect.add(new Option(city.name, String(city.id))));
+    }
+    if (!AppState.cityClockTimer) {
+        AppState.cityClockTimer = setInterval(() => cities.forEach(updateCityClock), 60000);
+    }
+}
+
+function updateCityClock(city) {
+    const clock = document.getElementById(`city-clock-${city.id}`);
+    if (clock) clock.textContent = `${formatTimeInTimeZone(new Date(), city.timeZone)} ${city.zoneLabel}`;
+    if (AppState.selectedCity?.id === city.id) {
+        const selectedClock = document.getElementById('city-local-time');
+        if (selectedClock) {
+            selectedClock.textContent = `${formatTimestampInTimeZone(new Date(), city.timeZone)} · local time (${city.zoneLabel})`;
+        }
+    }
 }
 
 function filterCities(query) {
@@ -890,11 +1058,15 @@ function selectCity(city) {
     AppState.selectedCity = city;
     AppState.placeQueryId = (AppState.placeQueryId || 0) + 1;
     document.getElementById('selected-city-name').textContent = city.name;
+    document.getElementById('city-local-time').textContent =
+        `${formatTimestampInTimeZone(new Date(), city.timeZone)} · local time (${city.zoneLabel})`;
+    document.getElementById('city-time-note').textContent =
+        `Visit dates and opening-hour filters use ${city.name} local time (${city.zoneLabel}).`;
     AppState.activePlaceCategory = null;
     document.getElementById('category-search').value = '';
     document.getElementById('place-text-filter').value = '';
     document.getElementById('distance-filter').value = 'any';
-    document.getElementById('visit-date').value = '';
+    document.getElementById('visit-date').value = getDateKeyInTimeZone(new Date(), city.timeZone);
     document.getElementById('visit-start').value = '';
     document.getElementById('visit-end').value = '';
     initializeCityMap(city);
@@ -908,16 +1080,42 @@ function selectCity(city) {
 
 function loadPlaces(cityName) {
     AppState.placeSearchError = '';
-    AppState.places = (cityPlaces[cityName] || []).map(place => ({
+    const city = cities.find(item => item.name === cityName);
+    const curatedPlaces = (cityPlaces[cityName] || []).map(place => ({
         ...place,
         openingHours: place.hours,
         dataSource: 'Curated example',
+        cityName,
+        timeZone: city?.timeZone || 'Asia/Jakarta',
+        zoneLabel: city?.zoneLabel || 'WIB',
         distance: Number(place.distance) || 0
     }));
-    document.getElementById('category-source').textContent = 'Curated examples';
-    document.getElementById('city-map-caption').textContent = `Curated examples · ${cityName}`;
+    const cachedPlaces = city && AppState.cityPlacesCache[city.id];
+    AppState.places = cachedPlaces || curatedPlaces;
+    document.getElementById('category-source').textContent = cachedPlaces ? 'OpenStreetMap data' : 'Curated examples · loading nearby places';
+    document.getElementById('city-map-caption').textContent = `${AppState.places.length} places · ${cityName}`;
     renderPlaces();
     renderCityPlaceMarkers(AppState.places);
+
+    if (!city || cachedPlaces) return;
+    const requestId = AppState.placeQueryId;
+    fetchOpenStreetMapPlaces(cityDiscoveryTags, city, 15000, 100).then(places => {
+        if (requestId !== AppState.placeQueryId || AppState.activePlaceCategory || AppState.selectedCity?.id !== city.id) return;
+        if (!places.length) {
+            document.getElementById('category-source').textContent = 'Curated examples · no nearby map data';
+            return;
+        }
+        AppState.cityPlacesCache[city.id] = places;
+        AppState.places = places;
+        document.getElementById('category-source').textContent = `OpenStreetMap · ${places.length} results`;
+        document.getElementById('city-map-caption').textContent = `Nearby places within 15 km · ${cityName}`;
+        renderPlaces();
+        renderCityPlaceMarkers(places);
+    }).catch(error => {
+        if (requestId !== AppState.placeQueryId || AppState.selectedCity?.id !== city.id) return;
+        console.error('Nearby city discovery failed; keeping curated examples:', error);
+        document.getElementById('category-source').textContent = 'Curated examples · map search unavailable';
+    });
 }
 
 function renderCategoryBrowser(query = '') {
@@ -988,11 +1186,11 @@ async function selectPlaceCategory(categoryId) {
     AppState.placeSearchError = '';
 
     try {
-        const places = await fetchOpenStreetMapPlaces(category, AppState.selectedCity, 15000);
+        const places = await fetchOpenStreetMapPlaces(category.tags, AppState.selectedCity, 15000, 40);
         if (requestId !== AppState.placeQueryId) return;
         AppState.places = places;
         AppState.placeSearchError = '';
-        document.getElementById('category-source').textContent = 'OpenStreetMap data';
+        document.getElementById('category-source').textContent = `OpenStreetMap · ${places.length} results`;
         document.getElementById('city-map-caption').textContent = `${places.length} OpenStreetMap result${places.length === 1 ? '' : 's'} · ${AppState.selectedCity.name}`;
         renderPlaces();
         renderCityPlaceMarkers(places);
@@ -1012,19 +1210,19 @@ async function selectPlaceCategory(categoryId) {
     }
 }
 
-async function fetchOpenStreetMapPlaces(category, center, radius) {
+async function fetchOpenStreetMapPlaces(tagPairs, center, radius, limit = 40) {
     const wait = Math.max(0, 1000 - (Date.now() - (AppState.lastCategorySearchAt || 0)));
     if (wait) await new Promise(resolve => setTimeout(resolve, wait));
     AppState.lastCategorySearchAt = Date.now();
 
-    const [tagKey, tagValue] = category.tags[0];
+    const uniqueTags = [...new Map(tagPairs.map(([key, value]) => [`${key}:${value}`, [key, value]])).values()];
+    const allowedTags = new Set(uniqueTags.map(([key, value]) => `${key}:${value}`));
     const params = new URLSearchParams({
-        q: (category.searchTerm || tagValue.replace(/_/g, ' ')).toLowerCase(),
         lat: String(center.lat),
         lon: String(center.lng),
-        limit: '40',
+        limit: String(limit),
         lang: currentLanguage === 'id' ? 'default' : 'en',
-        osm_tag: `${tagKey}:${tagValue}`
+        include: uniqueTags.map(([key, value]) => `osm.${key}.${value}`).join(',')
     });
 
     const controller = new AbortController();
@@ -1039,12 +1237,16 @@ async function fetchOpenStreetMapPlaces(category, center, radius) {
             const properties = feature.properties || {};
             const id = `${properties.osm_type}-${properties.osm_id}`;
             if (seen.has(id)) return places;
-            seen.add(id);
             const [lng, lat] = feature.geometry?.coordinates || [];
             if (!Number.isFinite(lat) || !Number.isFinite(lng)) return places;
-            if (properties.osm_key !== tagKey || properties.osm_value !== tagValue) return places;
+            const osmTag = `${properties.osm_key}:${properties.osm_value}`;
+            if (!allowedTags.has(osmTag)) return places;
             const distance = distanceBetweenKm(center.lat, center.lng, lat, lng);
             if (distance > radius / 1000) return places;
+            seen.add(id);
+            const category = placeCategories.find(item =>
+                item.tags.some(([key, value]) => key === properties.osm_key && value === properties.osm_value)
+            );
             const address = [
                 properties.housenumber,
                 properties.street,
@@ -1054,16 +1256,19 @@ async function fetchOpenStreetMapPlaces(category, center, radius) {
             ].filter(Boolean).join(', ');
             places.push({
                 id: `photon-${id}`,
-                name: properties.name || properties.street || category.label,
-                category: category.id,
-                categoryLabel: category.label,
+                name: properties.name || properties.street || category?.label || properties.osm_value,
+                category: category?.id || properties.osm_value,
+                categoryLabel: category?.label || properties.osm_value.replace(/_/g, ' '),
                 address: address || [properties.city, properties.state, properties.country].filter(Boolean).join(', ') || 'Address not listed in OpenStreetMap',
                 lat,
                 lng,
                 distance: Number(distance.toFixed(1)),
                 hours: '',
                 openingHours: '',
-                dataSource: 'OpenStreetMap via Photon'
+                dataSource: 'OpenStreetMap via Photon',
+                cityName: center.name,
+                timeZone: center.timeZone || 'Asia/Jakarta',
+                zoneLabel: center.zoneLabel || 'WIB'
             });
             return places;
         }, []).sort((a, b) => a.distance - b.distance);
@@ -1164,10 +1369,11 @@ function filterPlaces(render = true) {
 
     const note = document.getElementById('place-hours-note');
     if (note) {
+        const zoneLabel = AppState.selectedCity?.zoneLabel || '';
         if (!hasTimeFilter) {
-            note.textContent = 'Any time · places without published hours are marked for verification.';
+            note.textContent = `Times shown are local to ${AppState.selectedCity?.name || 'the selected city'}${zoneLabel ? ` (${zoneLabel})` : ''}. Places without published hours are marked for verification.`;
         } else {
-            const timeLabel = `${targetStart}–${targetEnd}${dateField?.value ? ` on ${dateField.value}` : ''}`;
+            const timeLabel = `${targetStart}–${targetEnd}${dateField?.value ? ` on ${dateField.value}` : ''}${zoneLabel ? ` ${zoneLabel}` : ''}`;
             note.textContent = `${timeLabel}: ${filteredPlaces.length - unknownHours.length} known matches; ${unknownHours.length} place${unknownHours.length === 1 ? '' : 's'} have unverified hours and may be closed.`;
         }
     }
@@ -1178,7 +1384,7 @@ function filterPlaces(render = true) {
 function shiftTime(value, minutes) {
     if (!value) return '';
     const [hour, minute] = value.split(':').map(Number);
-    const shifted = Math.max(0, Math.min(1439, hour * 60 + minute + minutes));
+    const shifted = (hour * 60 + minute + minutes + 1440) % 1440;
     return `${String(Math.floor(shifted / 60)).padStart(2, '0')}:${String(shifted % 60).padStart(2, '0')}`;
 }
 
@@ -1188,9 +1394,11 @@ function checkOpeningHours(place, dateValue, startTime, endTime) {
     if (/24\s*\/\s*7|24\s*(?:jam|hours?)/i.test(schedule)) return true;
     if (/^(?:closed|off|tutup)$/i.test(schedule)) return false;
 
-    const visitDate = dateValue ? new Date(`${dateValue}T12:00:00`) : new Date();
+    const visitDate = dateValue ? new Date(`${dateValue}T12:00:00Z`) : new Date();
     const weekdayCodes = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
-    const weekday = weekdayCodes[visitDate.getDay()];
+    const weekday = dateValue
+        ? weekdayCodes[visitDate.getUTCDay()]
+        : ({ Mon: 'Mo', Tue: 'Tu', Wed: 'We', Thu: 'Th', Fri: 'Fr', Sat: 'Sa', Sun: 'Su' }[getZonedDateParts(visitDate, AppState.selectedCity?.timeZone || 'Asia/Jakarta').weekday]);
     const targetStart = timeToMinutes(startTime);
     let targetEnd = timeToMinutes(endTime);
     if (targetStart === null || targetEnd === null) return null;
@@ -1198,20 +1406,27 @@ function checkOpeningHours(place, dateValue, startTime, endTime) {
 
     const segments = schedule.split(';').map(segment => segment.trim()).filter(Boolean);
     let matchingDayRule = false;
+    const dayIndex = { Su: 0, Mo: 1, Tu: 2, We: 3, Th: 4, Fr: 5, Sa: 6 };
     for (const segment of segments) {
         const timeMatch = segment.match(/(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/g);
         const dayMatch = segment.match(/^(Mo|Tu|We|Th|Fr|Sa|Su)(?:\s*-\s*(Mo|Tu|We|Th|Fr|Sa|Su))?(?:\s*,\s*(Mo|Tu|We|Th|Fr|Sa|Su))*/);
-        if (dayMatch && !dayRangeIncludes(dayMatch[0], weekday)) continue;
-        matchingDayRule = true;
-        if (/\b(?:off|closed|tutup)\b/i.test(segment)) continue;
-        if (!timeMatch) return null;
-        for (const range of timeMatch) {
-            const [openText, closeText] = range.split('-');
-            const open = timeToMinutes(openText);
-            let close = timeToMinutes(closeText);
-            if (open === null || close === null) return null;
-            if (close <= open) close += 1440;
-            if (targetStart >= open && targetEnd <= close) return true;
+        const closed = /\b(?:off|closed|tutup)\b/i.test(segment);
+        for (const dayOffset of [0, -1]) {
+            const openingDay = weekdayCodes[(dayIndex[weekday] + dayOffset + 7) % 7];
+            if (dayMatch && !dayRangeIncludes(dayMatch[0], openingDay)) continue;
+            if (dayOffset === 0) matchingDayRule = true;
+            if (closed) continue;
+            if (!timeMatch) return null;
+            for (const range of timeMatch) {
+                const [openText, closeText] = range.split('-');
+                const open = timeToMinutes(openText);
+                let close = timeToMinutes(closeText);
+                if (open === null || close === null) return null;
+                if (close <= open) close += 1440;
+                const openOnVisitDate = open + dayOffset * 1440;
+                const closeOnVisitDate = close + dayOffset * 1440;
+                if (targetStart >= openOnVisitDate && targetEnd <= closeOnVisitDate) return true;
+            }
         }
     }
     return matchingDayRule ? false : null;
@@ -1252,7 +1467,9 @@ function resetPlaceFilters() {
     document.getElementById('category-search').value = '';
     document.getElementById('place-text-filter').value = '';
     document.getElementById('distance-filter').value = 'any';
-    document.getElementById('visit-date').value = '';
+    document.getElementById('visit-date').value = AppState.selectedCity
+        ? getDateKeyInTimeZone(new Date(), AppState.selectedCity.timeZone)
+        : '';
     document.getElementById('visit-start').value = '';
     document.getElementById('visit-end').value = '';
     selectPlaceCategory('all');
@@ -1278,8 +1495,15 @@ function renderCityPlaceMarkers(places) {
 
 function selectPlace(place) {
     document.getElementById('search-input').value = place.name;
-    AppState.selectedDestination = place;
-    showRouteModal(place);
+    const placeCity = getRelevantCity(place.lat, place.lng);
+    const destination = {
+        ...place,
+        cityName: place.cityName || placeCity?.name,
+        timeZone: place.timeZone || placeCity?.timeZone || 'Asia/Jakarta',
+        zoneLabel: place.zoneLabel || placeCity?.zoneLabel || 'WIB'
+    };
+    AppState.selectedDestination = destination;
+    showRouteModal(destination);
 }
 
 // Search Functions
@@ -1404,10 +1628,23 @@ function fallbackSearch(query) {
 // Route Functions
 function getRouteOrigin() {
     if (AppState.currentLocation) {
-        return { lat: AppState.currentLocation.lat, lng: AppState.currentLocation.lng, label: 'Current location' };
+        const city = getCityForCoordinates(AppState.currentLocation.lat, AppState.currentLocation.lng);
+        return {
+            lat: AppState.currentLocation.lat,
+            lng: AppState.currentLocation.lng,
+            label: 'Current location',
+            timeZone: city?.timeZone || 'Asia/Jakarta',
+            zoneLabel: city?.zoneLabel || 'WIB'
+        };
     }
     if (AppState.selectedCity) {
-        return { lat: AppState.selectedCity.lat, lng: AppState.selectedCity.lng, label: `${AppState.selectedCity.name} city center` };
+        return {
+            lat: AppState.selectedCity.lat,
+            lng: AppState.selectedCity.lng,
+            label: `${AppState.selectedCity.name} city center`,
+            timeZone: AppState.selectedCity.timeZone,
+            zoneLabel: AppState.selectedCity.zoneLabel
+        };
     }
     return null;
 }
@@ -1415,13 +1652,22 @@ function getRouteOrigin() {
 async function showRouteModal(destination) {
     const modal = document.getElementById('nav-modal');
     const routeOptions = document.getElementById('route-options');
+    const destinationCity = getRelevantCity(Number(destination.lat), Number(destination.lng));
+    destination = {
+        ...destination,
+        cityName: destination.cityName || destinationCity?.name || '',
+        timeZone: destination.timeZone || destinationCity?.timeZone || 'Asia/Jakarta',
+        zoneLabel: destination.zoneLabel || destinationCity?.zoneLabel || 'WIB'
+    };
     AppState.selectedDestination = destination;
     AppState.selectedRoute = null;
     AppState.routeWeather = null;
     AppState.routeWeatherRequestId = (AppState.routeWeatherRequestId || 0) + 1;
     AppState.isNavigating = false;
+    AppState.routeTimeZone = destination.timeZone || AppState.selectedCity?.timeZone || getTimeZoneForCoordinates(destination.lat, destination.lng);
     document.getElementById('start-route-button').disabled = true;
     document.getElementById('rain-alert-card').classList.add('hidden');
+    renderSharedListPicker();
     modal.classList.add('active');
 
     const origin = getRouteOrigin();
@@ -1585,6 +1831,7 @@ async function fetchWeatherForecastAt(point, etaMinutes, signal) {
         ...point,
         etaMinutes,
         forecastTime: times[closestIndex],
+        forecastTimestamp: new Date(`${times[closestIndex]}:00Z`).toISOString(),
         precipitationProbability: Number(data.hourly.precipitation_probability?.[closestIndex]),
         precipitationMm: Number(data.hourly.precipitation?.[closestIndex]),
         weatherCode: Number(data.hourly.weather_code?.[closestIndex])
@@ -1668,15 +1915,21 @@ function showRainAlertIfNeeded() {
     if (weather.key === AppState.dismissedRainAlertKey) return;
     const point = weather.rainPoints[0];
     const severe = point.weatherCode >= 95 || point.precipitationMm >= 2.5;
+    const timeZone = AppState.selectedDestination?.timeZone || AppState.routeTimeZone || 'Asia/Jakarta';
+    const city = getCityForCoordinates(AppState.selectedDestination?.lat, AppState.selectedDestination?.lng);
+    const arrivalTime = formatTimeInTimeZone(new Date(Date.now() + point.etaMinutes * 60000), timeZone);
     document.getElementById('rain-alert-title').textContent = severe ? 'Severe weather ahead' : 'Rain possible along your route';
     document.getElementById('rain-alert-summary').textContent =
-        `Rain may be possible about ${point.distanceKm.toFixed(1)} km ahead, in roughly ${point.etaMinutes} min.`;
+        `Rain may be possible about ${point.distanceKm.toFixed(1)} km ahead, in roughly ${point.etaMinutes} min (${arrivalTime} ${city?.zoneLabel || ''}).`;
     const probability = Number.isFinite(point.precipitationProbability)
         ? `${point.precipitationProbability}% chance`
         : 'precipitation forecast';
     const amount = Number.isFinite(point.precipitationMm) ? `${point.precipitationMm} mm/hour` : 'amount unavailable';
+    const forecastTime = point.forecastTimestamp
+        ? ` Forecast hour: ${formatTimeInTimeZone(new Date(point.forecastTimestamp), timeZone)} ${city?.zoneLabel || ''}.`
+        : '';
     document.getElementById('rain-alert-details').textContent =
-        `Open-Meteo hourly forecast · ${probability} · ${amount}. Weather is a forecast, not a road-sensor observation.`;
+        `Open-Meteo hourly forecast · ${probability} · ${amount}.${forecastTime} Weather is a forecast, not a road-sensor observation.`;
     alertCard.classList.remove('hidden');
 }
 
@@ -1708,10 +1961,13 @@ function startNavigation() {
     const origin = AppState.routeOrigin || getRouteOrigin();
     if (!origin) return;
     AppState.isNavigating = true;
+    const createdAt = new Date().toISOString();
     AppState.journeyHistory.unshift({
         from: origin.label,
         to: AppState.selectedDestination.name,
-        date: new Date().toLocaleDateString(),
+        createdAt,
+        timeZone: AppState.selectedDestination.timeZone || origin.timeZone || 'Asia/Jakarta',
+        cityName: AppState.selectedDestination.cityName || AppState.selectedCity?.name || '',
         distance: AppState.selectedRoute.distance,
         time: AppState.selectedRoute.time
     });
@@ -1963,16 +2219,28 @@ function loadJourneyHistory() {
     AppState.journeyHistory.forEach(journey => {
         const journeyCard = document.createElement('div');
         journeyCard.className = 'place-card';
+        const timeZone = journey.timeZone || cities.find(city => city.name === journey.cityName)?.timeZone || 'Asia/Jakarta';
         journeyCard.innerHTML = `
             <h4>${escapeHtml(journey.from)} → ${escapeHtml(journey.to)}</h4>
             <div class="meta">
-                <span><i class="fas fa-calendar"></i> ${escapeHtml(journey.date)}</span>
+                <span><i class="fas fa-calendar"></i> ${escapeHtml(formatJourneyTimestamp(journey, timeZone))}</span>
                 <span><i class="fas fa-road"></i> ${escapeHtml(journey.distance)}</span>
                 <span><i class="fas fa-clock"></i> ${escapeHtml(journey.time)}</span>
             </div>
         `;
         historyList.appendChild(journeyCard);
     });
+}
+
+function formatJourneyTimestamp(journey, timeZone) {
+    const timestamp = journey.createdAt || journey.timestamp;
+    if (timestamp) return formatTimestampInTimeZone(timestamp, timeZone);
+    if (!journey.date) return 'Time unavailable';
+    const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(journey.date);
+    if (!dateOnly) return `Date only · ${journey.date}`;
+    const date = new Date(`${journey.date}T12:00:00Z`);
+    const locale = currentLanguage === 'id' ? 'id-ID' : 'en-GB';
+    return `Date only · ${new Intl.DateTimeFormat(locale, { timeZone, day: '2-digit', month: 'short', year: 'numeric' }).format(date)}`;
 }
 
 // Saved Places Functions
@@ -2007,6 +2275,379 @@ function loadSavedPlaces() {
         placeCard.onclick = () => selectPlace(place);
         savedPlacesList.appendChild(placeCard);
     });
+}
+
+function requirePremiumForLists() {
+    if (AppState.currentUser?.isPremium) return true;
+    showScreen('premium-screen');
+    alert('Shared lists are a Premium demo feature. Enable the Premium demo to try them.');
+    return false;
+}
+
+function openSharedListModal() {
+    if (!requirePremiumForLists()) return;
+    document.getElementById('shared-list-error').textContent = '';
+    document.getElementById('shared-list-form').reset();
+    updateSharedListForm();
+    document.getElementById('shared-list-modal').classList.add('active');
+}
+
+function closeSharedListModal() {
+    document.getElementById('shared-list-modal').classList.remove('active');
+}
+
+function updateSharedListForm() {
+    const type = document.getElementById('shared-list-type').value;
+    const label = document.getElementById('shared-list-members-label');
+    const help = document.getElementById('shared-list-form-help');
+    const members = document.getElementById('shared-list-members');
+    if (type === 'dates') {
+        label.textContent = 'Partner name';
+        members.placeholder = 'e.g. Aisha';
+        help.textContent = 'A Dates list includes you and exactly one partner.';
+    } else if (type === 'friends') {
+        label.textContent = 'Friends to invite (comma-separated)';
+        members.placeholder = 'e.g. Aisha, Budi';
+        help.textContent = 'Add at least two other people so the list has a group of three or more.';
+    } else {
+        label.textContent = 'People to invite (comma-separated)';
+        members.placeholder = 'e.g. Aisha, Budi';
+        help.textContent = 'Add the people you want included. You can share an invite snapshot later.';
+    }
+}
+
+function handleCreateSharedList(event) {
+    event.preventDefault();
+    if (!requirePremiumForLists()) return;
+
+    const type = document.getElementById('shared-list-type').value;
+    const name = document.getElementById('shared-list-name').value.trim();
+    const city = cities.find(item => item.id === Number(document.getElementById('shared-list-city').value));
+    const enteredMembers = document.getElementById('shared-list-members').value
+        .split(',')
+        .map(member => member.trim())
+        .filter(Boolean);
+    const owner = AppState.currentUser?.username || 'You';
+    const members = [...new Set([owner, ...enteredMembers].filter(Boolean))];
+    const error = document.getElementById('shared-list-error');
+    error.textContent = '';
+
+    if (!name || !city) {
+        error.textContent = 'Add a list name and choose its home city.';
+        return;
+    }
+    if (type === 'dates' && members.length !== 2) {
+        error.textContent = 'A Dates list needs exactly two people: you and one partner.';
+        return;
+    }
+    if (type === 'friends' && members.length < 3) {
+        error.textContent = 'A Friends list needs at least two other people.';
+        return;
+    }
+    if (type === 'custom' && members.length < 2) {
+        error.textContent = 'Add at least one other person to this shared list.';
+        return;
+    }
+
+    const list = {
+        id: `list-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        name,
+        type,
+        cityName: city.name,
+        cityId: city.id,
+        timeZone: city.timeZone,
+        zoneLabel: city.zoneLabel,
+        members,
+        places: [],
+        visits: [],
+        points: 0,
+        createdAt: new Date().toISOString(),
+        isSnapshot: false
+    };
+    AppState.sharedLists.unshift(list);
+    AppState.activeSharedListId = list.id;
+    saveUserData();
+    closeSharedListModal();
+    renderSharedLists();
+    renderSharedListDetail(list);
+}
+
+function loadSharedLists() {
+    renderSharedLists();
+    const activeList = AppState.sharedLists.find(list => list.id === AppState.activeSharedListId);
+    if (activeList) renderSharedListDetail(activeList);
+}
+
+function renderSharedLists() {
+    const container = document.getElementById('shared-lists-list');
+    if (!container) return;
+    container.replaceChildren();
+
+    if (AppState.sharedLists.length === 0) {
+        container.innerHTML = '<div class="empty-state"><i class="fa-solid fa-people-group"></i><p>No shared lists yet.</p><p class="text-muted">Try Premium demo to create a Friends, Dates, or custom list.</p></div>';
+        return;
+    }
+
+    AppState.sharedLists.forEach(list => {
+        const stats = getListWeeklyStats(list);
+        const card = document.createElement('article');
+        card.className = 'shared-list-card';
+        card.innerHTML = `
+            <div class="shared-list-card-header">
+              <div><span class="shared-list-kind">${escapeHtml(list.type)} list</span><h3>${escapeHtml(list.name)}</h3></div>
+              <i class="fa-solid ${list.type === 'dates' ? 'fa-heart' : 'fa-people-group'}" aria-hidden="true"></i>
+            </div>
+            <p>${escapeHtml(list.cityName)} · ${escapeHtml(list.zoneLabel || 'local time')}</p>
+            <p>${list.members.length} members · ${list.places.length} places</p>
+            <p><strong>${stats.streak}</strong> week streak · <strong>${stats.points}</strong> points</p>
+            <div class="shared-list-card-actions">
+              <button type="button" class="btn btn-primary btn-small" data-action="open">Open list</button>
+              <button type="button" class="btn btn-outline btn-small" data-action="share">Share snapshot</button>
+            </div>
+        `;
+        card.querySelector('[data-action="open"]').addEventListener('click', () => openSharedList(list.id));
+        card.querySelector('[data-action="share"]').addEventListener('click', () => shareSharedList(list.id));
+        container.appendChild(card);
+    });
+}
+
+function openSharedList(listId) {
+    const list = AppState.sharedLists.find(item => item.id === listId);
+    if (!list) return;
+    AppState.activeSharedListId = list.id;
+    renderSharedListDetail(list);
+    document.getElementById('shared-list-detail').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function renderSharedListDetail(list) {
+    const detail = document.getElementById('shared-list-detail');
+    if (!detail || !list) return;
+    const stats = getListWeeklyStats(list);
+    const progress = stats.completedThisWeek ? 100 : 0;
+    const visitOptions = list.places.map(place =>
+        `<option value="${escapeHtml(place.id)}">${escapeHtml(place.name)}</option>`
+    ).join('');
+    const placesMarkup = list.places.length
+        ? list.places.map(place => `
+            <div class="shared-list-place">
+              <div><h4>${escapeHtml(place.name)}</h4><p>${escapeHtml(place.address || 'Address unavailable')}</p></div>
+              <button type="button" class="btn btn-outline btn-small" data-remove-place="${escapeHtml(place.id)}" aria-label="Remove ${escapeHtml(place.name)}">Remove</button>
+            </div>
+        `).join('')
+        : '<p class="text-muted">Explore a city and add places from the route panel.</p>';
+    const visitsMarkup = (list.visits || []).slice().reverse().slice(0, 5).map(visit => `
+        <p><i class="fa-solid fa-check"></i> ${escapeHtml(visit.placeName)} · ${escapeHtml(formatTimestampInTimeZone(visit.visitedAt, list.timeZone))}</p>
+    `).join('') || '<p>No weekly visits logged yet.</p>';
+
+    detail.innerHTML = `
+        <div class="shared-list-detail-header">
+          <div><span class="shared-list-kind">${escapeHtml(list.type)} list · ${escapeHtml(list.cityName)} (${escapeHtml(list.zoneLabel || 'local time')})</span><h2>${escapeHtml(list.name)}</h2><p>${list.isSnapshot ? 'Imported snapshot · edits are local to this browser' : 'Your saved places and weekly activity'}</p></div>
+          <div class="shared-list-detail-actions">
+            <button type="button" class="btn btn-outline btn-small" data-action="share"><i class="fa-solid fa-share-nodes"></i> Share snapshot</button>
+            <button type="button" class="btn btn-outline btn-small" data-action="delete"><i class="fa-solid fa-trash"></i> Delete</button>
+          </div>
+        </div>
+        <div class="shared-list-stats">
+          <div class="shared-list-stat"><strong>${stats.streak}</strong><span>week streak</span></div>
+          <div class="shared-list-stat"><strong>${stats.points}</strong><span>points</span></div>
+          <div class="shared-list-stat"><strong>${list.places.length}</strong><span>saved places</span></div>
+        </div>
+        <div class="weekly-progress"><span>This week</span><div class="weekly-progress-track"><span style="width:${progress}%"></span></div><strong>${stats.completedThisWeek ? 'Complete' : '1 visit needed'}</strong></div>
+        <div class="weekly-activity">
+          <label for="weekly-visit-place">Log a visit together
+            <select id="weekly-visit-place" ${list.places.length ? '' : 'disabled'}>
+              <option value="">Choose a place from this list</option>${visitOptions}
+            </select>
+          </label>
+          <button type="button" class="btn btn-primary" data-action="check-in" ${stats.completedThisWeek || !list.places.length ? 'disabled' : ''}><i class="fa-solid fa-check"></i> Complete weekly visit</button>
+        </div>
+        <div class="shared-list-content">
+          <div class="panel list-panel"><div class="panel-heading"><h3>Places in this list</h3></div>${placesMarkup}</div>
+          <div>
+            <div class="shared-list-members"><h3>Members</h3>${list.members.map(member => `<p><i class="fa-solid fa-user"></i> ${escapeHtml(member)}</p>`).join('')}</div>
+            <div class="shared-list-visits" style="margin-top:10px"><h3>Recent weekly visits</h3>${visitsMarkup}</div>
+          </div>
+        </div>
+        <p class="prototype-disclaimer"><i class="fa-solid fa-circle-info"></i> This is a self-reported demo check-in. A shared link imports a snapshot; it does not sync later edits.</p>
+    `;
+    detail.classList.remove('hidden');
+    detail.querySelector('[data-action="share"]').addEventListener('click', () => shareSharedList(list.id));
+    detail.querySelector('[data-action="delete"]').addEventListener('click', () => deleteSharedList(list.id));
+    detail.querySelector('[data-action="check-in"]').addEventListener('click', () => completeWeeklyVisit(list.id));
+    detail.querySelectorAll('[data-remove-place]').forEach(button => {
+        button.addEventListener('click', () => removePlaceFromSharedList(list.id, button.dataset.removePlace));
+    });
+}
+
+function renderSharedListPicker() {
+    const picker = document.getElementById('shared-list-picker');
+    if (!picker) return;
+    picker.replaceChildren(new Option('Choose a list', ''));
+    AppState.sharedLists.forEach(list => picker.add(new Option(`${list.name} · ${list.cityName}`, list.id)));
+}
+
+function addSelectedPlaceToSharedList() {
+    if (!requirePremiumForLists()) return;
+    const place = AppState.selectedDestination;
+    const list = AppState.sharedLists.find(item => item.id === document.getElementById('shared-list-picker').value);
+    if (!place || !list) {
+        alert('Choose a shared list first.');
+        return;
+    }
+    const duplicate = list.places.some(item =>
+        item.id === place.id ||
+        (Number(item.lat) === Number(place.lat) && Number(item.lng) === Number(place.lng))
+    );
+    if (duplicate) {
+        alert('That place is already in this list.');
+        return;
+    }
+    list.places.push({
+        ...place,
+        id: String(place.id || `place-${Date.now()}`),
+        address: place.address || place.fullName || 'Address unavailable',
+        timeZone: list.timeZone,
+        zoneLabel: list.zoneLabel
+    });
+    saveUserData();
+    renderSharedLists();
+    if (AppState.activeSharedListId === list.id) renderSharedListDetail(list);
+}
+
+function removePlaceFromSharedList(listId, placeId) {
+    const list = AppState.sharedLists.find(item => item.id === listId);
+    if (!list) return;
+    list.places = list.places.filter(place => String(place.id) !== String(placeId));
+    saveUserData();
+    renderSharedLists();
+    renderSharedListDetail(list);
+}
+
+function completeWeeklyVisit(listId) {
+    const list = AppState.sharedLists.find(item => item.id === listId);
+    const placeId = document.getElementById('weekly-visit-place')?.value;
+    const place = list?.places.find(item => String(item.id) === String(placeId));
+    if (!list || !place) {
+        alert('Choose a place in this list before logging a visit.');
+        return;
+    }
+    if (!requirePremiumForLists()) return;
+
+    const visitedAt = new Date();
+    const weekKey = getWeekKeyInTimeZone(visitedAt, list.timeZone);
+    if ((list.visits || []).some(visit => visit.weekKey === weekKey)) {
+        alert('This list already has a visit logged for the current local week.');
+        return;
+    }
+    const previousStreak = getListWeeklyStats(list, visitedAt).streak;
+    const nextStreak = previousStreak + 1;
+    const pointsBefore = list.points !== undefined && Number.isFinite(Number(list.points))
+        ? Number(list.points)
+        : getListWeeklyStats(list, visitedAt).points;
+    list.visits = list.visits || [];
+    list.visits.push({
+        placeId: place.id,
+        placeName: place.name,
+        visitedAt: visitedAt.toISOString(),
+        timeZone: list.timeZone,
+        weekKey,
+        loggedBy: AppState.currentUser?.username || 'You'
+    });
+    list.points = pointsBefore + 50 + (nextStreak % 4 === 0 ? 100 : 0);
+    saveUserData();
+    renderSharedLists();
+    renderSharedListDetail(list);
+}
+
+function deleteSharedList(listId) {
+    if (!confirm('Delete this list and its locally stored check-ins?')) return;
+    AppState.sharedLists = AppState.sharedLists.filter(list => list.id !== listId);
+    if (AppState.activeSharedListId === listId) {
+        AppState.activeSharedListId = null;
+        document.getElementById('shared-list-detail').classList.add('hidden');
+    }
+    saveUserData();
+    renderSharedLists();
+}
+
+async function shareSharedList(listId) {
+    if (!requirePremiumForLists()) return;
+    const list = AppState.sharedLists.find(item => item.id === listId);
+    if (!list) return;
+    const snapshot = {
+        version: 1,
+        sharedList: {
+            name: list.name,
+            type: list.type,
+            cityName: list.cityName,
+            timeZone: list.timeZone,
+            zoneLabel: list.zoneLabel,
+            members: list.members,
+            places: list.places,
+            visits: list.visits || [],
+            points: Number(list.points) || 0
+        }
+    };
+    const inviteUrl = `${location.origin}${location.pathname}#shared-list=${encodeURIComponent(JSON.stringify(snapshot))}`;
+    if (inviteUrl.length > 60000) {
+        alert('This list is too large to share as a link. Remove some places and try again.');
+        return;
+    }
+    try {
+        await navigator.clipboard.writeText(inviteUrl);
+        alert('Snapshot invite link copied. Anyone with the link can import this copy; future edits will not sync.');
+    } catch (error) {
+        console.error('Could not copy the shared-list link:', error);
+        prompt('Copy this snapshot invite link. Future edits will not sync:', inviteUrl);
+    }
+}
+
+function processSharedListInvite() {
+    const encoded = new URLSearchParams(location.hash.slice(1)).get('shared-list');
+    if (!encoded) return;
+    if (encoded.length > 60000) {
+        alert('This shared-list link is too large to import.');
+        return;
+    }
+
+    let snapshot;
+    try {
+        snapshot = JSON.parse(encoded);
+    } catch (error) {
+        console.error('Could not parse shared-list link:', error);
+        alert('This shared-list link is invalid.');
+        return;
+    }
+    const shared = snapshot?.sharedList;
+    if (snapshot?.version !== 1 || !shared || !Array.isArray(shared.places) || !Array.isArray(shared.members)) {
+        alert('This shared-list link is not supported.');
+        return;
+    }
+    if (!confirm(`Import "${String(shared.name || 'Shared list').slice(0, 60)}" as a separate local copy?`)) return;
+
+    const city = cities.find(item => item.name === shared.cityName);
+    const list = {
+        id: `import-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        name: String(shared.name || 'Imported list').slice(0, 60),
+        type: ['friends', 'dates', 'custom'].includes(shared.type) ? shared.type : 'custom',
+        cityName: city?.name || 'Jakarta',
+        cityId: city?.id || 1,
+        timeZone: city?.timeZone || 'Asia/Jakarta',
+        zoneLabel: city?.zoneLabel || 'WIB',
+        members: shared.members.slice(0, 50).map(member => String(member).slice(0, 60)),
+        places: shared.places.slice(0, 100),
+        visits: Array.isArray(shared.visits) ? shared.visits.slice(-500) : [],
+        points: Math.max(0, Number(shared.points) || 0),
+        createdAt: new Date().toISOString(),
+        isSnapshot: true
+    };
+    AppState.sharedLists.unshift(list);
+    AppState.activeSharedListId = list.id;
+    saveUserData();
+    history.replaceState(null, '', `${location.pathname}${location.search}`);
+    loadSharedLists();
+    navigateTo('lists');
+    alert('Snapshot imported. It is a separate copy and will not sync with the sender.');
 }
 
 function saveSelectedPlace() {
@@ -2279,14 +2920,15 @@ function updateVoiceSamplePhrases() {
 function handlePremiumUpgrade() {
     if (AppState.currentUser) {
         if (AppState.currentUser.isPremium) {
-            alert('You already have Premium!');
+            alert('Premium demo access is already active. No payment was taken.');
         } else {
-            const confirmed = confirm('Upgrade to Premium? (Demo Mode)');
+            const confirmed = confirm('Enable the Premium demo features? No payment or subscription will be created.');
             if (confirmed) {
                 AppState.currentUser.isPremium = true;
                 saveUserData();
                 updateUI();
-                alert('Welcome to Premium! (Demo)');
+                renderSharedLists();
+                alert('Premium demo features are enabled in this browser.');
             }
         }
     }
