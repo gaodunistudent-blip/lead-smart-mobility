@@ -2,6 +2,8 @@
 
 LEAD is a responsive mobility-planning prototype for exploring Indonesian cities, finding nearby places, and planning journeys. It is built with Vite, vanilla JavaScript, and Leaflet, and can be deployed as a static site on Vercel.
 
+**Live demo:** [lead-smart-mobility.vercel.app](https://lead-smart-mobility.vercel.app/)
+
 ## Features
 
 - Interactive OpenStreetMap map with optional browser geolocation.
