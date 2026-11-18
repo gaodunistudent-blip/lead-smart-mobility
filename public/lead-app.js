@@ -8,8 +8,18 @@ const AppState = {
     vehicles: [],
     currentLocation: null,
     map: null,
+    cityMap: null,
     marker: null,
+    accuracyCircle: null,
     routeLayer: null,
+    placeMarkers: null,
+    cityPlaceMarkers: null,
+    places: [],
+    activePlaceCategory: null,
+    placeSearchError: '',
+    routeWeather: null,
+    dismissedRainAlertKey: null,
+    voiceRecognition: null,
     isVoiceActive: false,
     selectedCity: null,
     journeyHistory: [],
@@ -29,6 +39,12 @@ const API_CONFIG = {
     },
     osrm: {
         baseUrl: 'https://router.project-osrm.org/route/v1'
+    },
+    photon: {
+        baseUrl: 'https://photon.komoot.io/api/'
+    },
+    weather: {
+        baseUrl: 'https://api.open-meteo.com/v1/forecast'
     }
 };
 
@@ -153,6 +169,77 @@ const vehicleIcons = {
     bus: 'fa-bus'
 };
 
+const placeCategories = [
+    { group: 'Food & Dining', id: 'restaurants', label: 'Restaurants', icon: 'fa-utensils', tags: [['amenity', 'restaurant']] },
+    { group: 'Food & Dining', id: 'local-restaurants', label: 'Local restaurants', icon: 'fa-bowl-food', tags: [['amenity', 'restaurant']] },
+    { group: 'Food & Dining', id: 'warung', label: 'Warung', icon: 'fa-shop', tags: [['shop', 'convenience'], ['amenity', 'restaurant']] },
+    { group: 'Food & Dining', id: 'street-food', label: 'Street food', icon: 'fa-hotdog', tags: [['amenity', 'fast_food'], ['shop', 'food']] },
+    { group: 'Food & Dining', id: 'cafes', label: 'Cafes', icon: 'fa-mug-saucer', tags: [['amenity', 'cafe']] },
+    { group: 'Food & Dining', id: 'coffee', label: 'Coffee shops', icon: 'fa-mug-hot', tags: [['amenity', 'cafe']] },
+    { group: 'Food & Dining', id: 'bakeries', label: 'Bakeries', icon: 'fa-bread-slice', tags: [['shop', 'bakery']] },
+    { group: 'Food & Dining', id: 'fast-food', label: 'Fast food', icon: 'fa-burger', tags: [['amenity', 'fast_food']] },
+    { group: 'Food & Dining', id: 'food-courts', label: 'Food courts', icon: 'fa-table-cells', tags: [['amenity', 'food_court']] },
+
+    { group: 'Shopping', id: 'malls', label: 'Shopping malls', icon: 'fa-bag-shopping', tags: [['shop', 'mall']] },
+    { group: 'Shopping', id: 'clothing', label: 'Clothing stores', icon: 'fa-shirt', tags: [['shop', 'clothes']] },
+    { group: 'Shopping', id: 'fashion', label: 'Fashion boutiques', icon: 'fa-wand-magic-sparkles', tags: [['shop', 'clothes']] },
+    { group: 'Shopping', id: 'shoes', label: 'Shoe stores', icon: 'fa-shoe-prints', tags: [['shop', 'shoes']] },
+    { group: 'Shopping', id: 'supermarkets', label: 'Supermarkets', icon: 'fa-cart-shopping', tags: [['shop', 'supermarket']] },
+    { group: 'Shopping', id: 'convenience', label: 'Convenience stores', icon: 'fa-store', tags: [['shop', 'convenience']] },
+    { group: 'Shopping', id: 'markets', label: 'Traditional markets', icon: 'fa-basket-shopping', tags: [['amenity', 'marketplace']] },
+    { group: 'Shopping', id: 'electronics', label: 'Electronics stores', icon: 'fa-mobile-screen-button', tags: [['shop', 'electronics']] },
+    { group: 'Shopping', id: 'beauty', label: 'Beauty & cosmetics', icon: 'fa-spa', tags: [['shop', 'cosmetics']] },
+    { group: 'Shopping', id: 'bookstores', label: 'Bookstores', icon: 'fa-book-open', tags: [['shop', 'books']] },
+    { group: 'Shopping', id: 'local-shops', label: 'Local shops', icon: 'fa-store', tags: [['shop', 'general']] },
+
+    { group: 'Transportation', id: 'bus-stations', label: 'Bus stations', icon: 'fa-bus', tags: [['amenity', 'bus_station']] },
+    { group: 'Transportation', id: 'bus-stops', label: 'Bus stops', icon: 'fa-signs-post', tags: [['highway', 'bus_stop']] },
+    { group: 'Transportation', id: 'train-stations', label: 'Train stations', icon: 'fa-train', tags: [['railway', 'station']] },
+    { group: 'Transportation', id: 'railway-stations', label: 'Railway stations & stops', icon: 'fa-train-subway', tags: [['railway', 'halt'], ['railway', 'tram_stop']] },
+    { group: 'Transportation', id: 'airports', label: 'Airports', icon: 'fa-plane', tags: [['aeroway', 'aerodrome']] },
+    { group: 'Transportation', id: 'ferry-terminals', label: 'Ferry terminals', icon: 'fa-ship', tags: [['amenity', 'ferry_terminal']] },
+    { group: 'Transportation', id: 'transit-hubs', label: 'Public transport hubs', icon: 'fa-right-left', tags: [['public_transport', 'station']] },
+    { group: 'Transportation', id: 'taxi', label: 'Taxi stands', icon: 'fa-taxi', tags: [['amenity', 'taxi']] },
+    { group: 'Transportation', id: 'parking', label: 'Parking areas', icon: 'fa-square-parking', tags: [['amenity', 'parking']] },
+
+    { group: 'Health', id: 'hospitals', label: 'Hospitals', icon: 'fa-hospital', tags: [['amenity', 'hospital']] },
+    { group: 'Health', id: 'clinics', label: 'Clinics', icon: 'fa-house-medical', tags: [['amenity', 'clinic']] },
+    { group: 'Health', id: 'pharmacies', label: 'Pharmacies', icon: 'fa-prescription-bottle-medical', tags: [['amenity', 'pharmacy']] },
+    { group: 'Health', id: 'laboratories', label: 'Medical laboratories', icon: 'fa-flask', tags: [['healthcare', 'laboratory']] },
+    { group: 'Health', id: 'dentists', label: 'Dental clinics', icon: 'fa-tooth', tags: [['amenity', 'dentist']] },
+
+    { group: 'Education', id: 'universities', label: 'Universities', icon: 'fa-building-columns', tags: [['amenity', 'university']] },
+    { group: 'Education', id: 'schools', label: 'Schools', icon: 'fa-school', tags: [['amenity', 'school']] },
+    { group: 'Education', id: 'libraries', label: 'Libraries', icon: 'fa-book', tags: [['amenity', 'library']] },
+    { group: 'Education', id: 'education', label: 'Educational institutions', icon: 'fa-graduation-cap', tags: [['amenity', 'college']] },
+
+    { group: 'Fuel & Mobility', id: 'fuel', label: 'Gas stations', icon: 'fa-gas-pump', tags: [['amenity', 'fuel']] },
+    { group: 'Fuel & Mobility', id: 'ev-charging', label: 'EV charging stations', icon: 'fa-charging-station', tags: [['amenity', 'charging_station']] },
+    { group: 'Fuel & Mobility', id: 'vehicle-repair', label: 'Vehicle repair shops', icon: 'fa-screwdriver-wrench', tags: [['shop', 'car_repair']] },
+    { group: 'Fuel & Mobility', id: 'motorcycle-workshops', label: 'Motorcycle workshops', icon: 'fa-motorcycle', tags: [['shop', 'motorcycle']] },
+    { group: 'Fuel & Mobility', id: 'car-workshops', label: 'Car workshops', icon: 'fa-car', tags: [['shop', 'car_repair']] },
+    { group: 'Fuel & Mobility', id: 'tire-shops', label: 'Tire shops', icon: 'fa-circle-dot', tags: [['shop', 'tyres']] },
+    { group: 'Fuel & Mobility', id: 'car-washes', label: 'Car washes', icon: 'fa-car-on', tags: [['amenity', 'car_wash']] },
+
+    { group: 'Public & Essential Services', id: 'government', label: 'Government offices', icon: 'fa-landmark', tags: [['office', 'government']] },
+    { group: 'Public & Essential Services', id: 'police', label: 'Police stations', icon: 'fa-shield-halved', tags: [['amenity', 'police']] },
+    { group: 'Public & Essential Services', id: 'fire-stations', label: 'Fire stations', icon: 'fa-fire-extinguisher', tags: [['amenity', 'fire_station']] },
+    { group: 'Public & Essential Services', id: 'post-offices', label: 'Post offices', icon: 'fa-envelopes-bulk', tags: [['amenity', 'post_office']] },
+    { group: 'Public & Essential Services', id: 'banks', label: 'Banks', icon: 'fa-building-columns', tags: [['amenity', 'bank']] },
+    { group: 'Public & Essential Services', id: 'atms', label: 'ATMs', icon: 'fa-money-bill-wave', tags: [['amenity', 'atm']] },
+    { group: 'Public & Essential Services', id: 'worship', label: 'Places of worship', icon: 'fa-place-of-worship', tags: [['amenity', 'place_of_worship']] },
+    { group: 'Public & Essential Services', id: 'public-services', label: 'Public facilities', icon: 'fa-circle-info', tags: [['amenity', 'community_centre']] },
+
+    { group: 'Leisure & Tourism', id: 'attractions', label: 'Tourist attractions', icon: 'fa-camera', tags: [['tourism', 'attraction']] },
+    { group: 'Leisure & Tourism', id: 'parks', label: 'Parks', icon: 'fa-tree', tags: [['leisure', 'park']] },
+    { group: 'Leisure & Tourism', id: 'beaches', label: 'Beaches', icon: 'fa-umbrella-beach', tags: [['natural', 'beach']] },
+    { group: 'Leisure & Tourism', id: 'museums', label: 'Museums', icon: 'fa-landmark', tags: [['tourism', 'museum']] },
+    { group: 'Leisure & Tourism', id: 'cinemas', label: 'Cinemas', icon: 'fa-film', tags: [['amenity', 'cinema']] },
+    { group: 'Leisure & Tourism', id: 'hotels', label: 'Hotels', icon: 'fa-hotel', tags: [['tourism', 'hotel']] },
+    { group: 'Leisure & Tourism', id: 'resorts', label: 'Resorts', icon: 'fa-umbrella-beach', tags: [['tourism', 'resort']] },
+    { group: 'Leisure & Tourism', id: 'sports', label: 'Sports facilities', icon: 'fa-futbol', tags: [['leisure', 'sports_centre']] }
+];
+
 function escapeHtml(value) {
     return String(value ?? '').replace(/[&<>"']/g, character => ({
         '&': '&amp;',
@@ -171,10 +258,11 @@ function initializeApp() {
     loadUserData();
     initializeMap();
     loadCities();
-    fetchWeatherSimulated();
+    setWeatherLabel('Allow location to show local weather');
     updateLocationStatus();
     checkGeolocation();
     updateVoiceSamplePhrases();
+    renderCategoryBrowser();
 
     // Auto-start demo mode if no user data exists
     if (!AppState.currentUser) {
@@ -322,6 +410,13 @@ function showScreen(screenId) {
                 AppState.map.invalidateSize();
             }
         }, 100);
+    }
+    if (screenId === 'place-screen' && AppState.cityMap) {
+        setTimeout(() => AppState.cityMap.invalidateSize(), 100);
+    }
+    const voiceFab = document.getElementById('voice-ai-fab');
+    if (voiceFab) {
+        voiceFab.classList.toggle('hidden', ['welcome-screen', 'login-screen', 'register-screen'].includes(screenId));
     }
 }
 
@@ -486,50 +581,115 @@ function updateUI() {
 
 // Map Initialization
 function initializeMap() {
-    // Center on Indonesia archipelago
     const indonesiaCenter = [-2.5489, 118.0149];
     const indonesiaZoom = 5;
 
     try {
-        AppState.map = L.map('map').setView(indonesiaCenter, indonesiaZoom);
+        AppState.map = L.map('map', {
+            minZoom: 4,
+            maxZoom: 19,
+            worldCopyJump: true,
+            zoomControl: true
+        }).setView(indonesiaCenter, indonesiaZoom);
+        AppState.placeMarkers = L.layerGroup().addTo(AppState.map);
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        const tiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap contributors',
-            maxZoom: 18
+            maxZoom: 19,
+            updateWhenIdle: true,
+            keepBuffer: 2
         }).addTo(AppState.map);
+        tiles.on('tileerror', () => showMapError('Map tiles could not be loaded. Check your internet connection and try again.'));
+        tiles.on('load', () => {
+            const error = document.getElementById('map-error');
+            if (error) error.classList.add('hidden');
+        });
 
-        // Add location control button
         const locationControl = L.control({ position: 'topleft' });
         locationControl.onAdd = function(map) {
             const div = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-custom');
-            div.innerHTML = '<a href="#" title="' + t('centerOnLocation') + '"><i class="fas fa-crosshairs"></i></a>';
-            div.style.backgroundColor = 'white';
-            div.style.padding = '5px';
-            div.style.border = '2px solid rgba(0,0,0,0.2)';
-            div.style.cursor = 'pointer';
-            div.onclick = function(e) {
-                e.preventDefault();
+            const button = L.DomUtil.create('button', 'map-location-control', div);
+            button.type = 'button';
+            button.title = t('centerOnLocation');
+            button.setAttribute('aria-label', t('centerOnLocation'));
+            button.innerHTML = '<i class="fas fa-crosshairs"></i>';
+            L.DomEvent.disableClickPropagation(div);
+            L.DomEvent.on(button, 'click', function(event) {
+                L.DomEvent.preventDefault(event);
                 centerOnCurrentLocation();
-            };
+            });
             return div;
         };
         locationControl.addTo(AppState.map);
 
-        // Initialize marker (will be updated with real location)
         AppState.marker = L.marker(indonesiaCenter, {
-            opacity: 0
+            opacity: 0,
+            icon: createLeadMarkerIcon()
         }).addTo(AppState.map);
+        AppState.accuracyCircle = L.circle(indonesiaCenter, {
+            radius: 0,
+            color: '#c83f3b',
+            fillColor: '#c83f3b',
+            fillOpacity: 0.1,
+            weight: 1
+        }).addTo(AppState.map);
+        L.control.scale({ imperial: false }).addTo(AppState.map);
 
-        console.log('Map initialized successfully');
     } catch (error) {
         console.error('Map initialization error:', error);
-        document.getElementById('map').innerHTML = '<div style="padding: 2rem; text-align: center;"><p>Map failed to load. Please check your internet connection.</p></div>';
+        showMapError('The map could not start. Refresh the page or check your internet connection.');
+    }
+}
+
+function showMapError(message, targetId = 'map-error') {
+    const error = document.getElementById(targetId);
+    if (!error) return;
+    error.textContent = message;
+    error.classList.remove('hidden');
+}
+
+function createLeadMarkerIcon() {
+    return L.divIcon({
+        className: 'lead-map-marker',
+        html: '<span></span>',
+        iconSize: [24, 24],
+        iconAnchor: [12, 12],
+        popupAnchor: [0, -12]
+    });
+}
+
+function initializeCityMap(city) {
+    if (!city) return;
+    const center = [city.lat, city.lng];
+    if (!AppState.cityMap) {
+        AppState.cityMap = L.map('city-map', {
+            minZoom: 9,
+            maxZoom: 19,
+            zoomControl: true
+        }).setView(center, 13);
+        AppState.cityPlaceMarkers = L.layerGroup().addTo(AppState.cityMap);
+        const tiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 19,
+            updateWhenIdle: true,
+            keepBuffer: 2
+        }).addTo(AppState.cityMap);
+        tiles.on('tileerror', () => showMapError('City map tiles could not be loaded. Check your connection.', 'city-map-error'));
+        tiles.on('load', () => document.getElementById('city-map-error')?.classList.add('hidden'));
+    } else {
+        AppState.cityMap.setView(center, 13);
+        setTimeout(() => AppState.cityMap.invalidateSize(), 100);
+    }
+}
+
+function centerCityMap() {
+    if (AppState.selectedCity && AppState.cityMap) {
+        AppState.cityMap.setView([AppState.selectedCity.lat, AppState.selectedCity.lng], 13);
     }
 }
 
 function checkGeolocation() {
     if (navigator.geolocation) {
-        // Request location permission and get current position
         navigator.geolocation.getCurrentPosition(
             (position) => {
                 AppState.currentLocation = {
@@ -539,13 +699,11 @@ function checkGeolocation() {
                 };
                 updateMapLocation();
                 startLocationWatch();
-                fetchWeather();
+                fetchWeather().catch((error) => console.error('Weather request failed:', error));
                 updateLocationStatus();
             },
             (error) => {
-                console.log('Geolocation error:', error);
                 handleGeolocationError(error);
-                fetchWeatherSimulated();
                 updateLocationStatus();
             },
             {
@@ -555,8 +713,7 @@ function checkGeolocation() {
             }
         );
     } else {
-        console.log('Geolocation not supported');
-        fetchWeatherSimulated();
+        AppState.locationError = 'This browser does not support geolocation.';
         updateLocationStatus();
     }
 }
@@ -571,9 +728,11 @@ function startLocationWatch() {
                     accuracy: position.coords.accuracy
                 };
                 updateMapLocation();
+                updateLocationStatus();
             },
             (error) => {
-                console.log('Location watch error:', error);
+                handleGeolocationError(error);
+                updateLocationStatus();
             },
             {
                 enableHighAccuracy: true,
@@ -606,8 +765,8 @@ function handleGeolocationError(error) {
         default:
             message = t('error');
     }
-    console.log(message);
-    // Could show user notification here
+    AppState.locationError = message;
+    updateLocationStatus();
 }
 
 function centerOnCurrentLocation() {
@@ -615,7 +774,8 @@ function centerOnCurrentLocation() {
         AppState.map.setView([AppState.currentLocation.lat, AppState.currentLocation.lng], 15);
         updateMapLocation();
     } else {
-        // Request location if not available
+        AppState.locationError = 'Location is not available. Allow location access or browse the map manually.';
+        updateLocationStatus();
         checkGeolocation();
     }
 }
@@ -624,9 +784,10 @@ function updateMapLocation() {
     if (AppState.currentLocation && AppState.map) {
         AppState.marker.setLatLng([AppState.currentLocation.lat, AppState.currentLocation.lng]);
         AppState.marker.setOpacity(1);
-        AppState.marker.bindPopup(t('yourLocation')).openPopup();
+        AppState.marker.bindPopup(t('yourLocation'));
+        AppState.accuracyCircle.setLatLng([AppState.currentLocation.lat, AppState.currentLocation.lng]);
+        AppState.accuracyCircle.setRadius(Math.min(AppState.currentLocation.accuracy || 0, 1000));
 
-        // Only auto-center if this is the first location update
         if (!AppState.locationInitialized) {
             AppState.map.setView([AppState.currentLocation.lat, AppState.currentLocation.lng], 15);
             AppState.locationInitialized = true;
@@ -634,26 +795,63 @@ function updateMapLocation() {
     }
 }
 
-// Weather Functions
-function fetchWeather() {
-    // Note: In production, integrate with BMKG API or OpenWeatherMap
-    // For now, using simulated data
-    fetchWeatherSimulated();
+function setWeatherLabel(text, icon = 'fa-cloud-sun') {
+    const weather = document.getElementById('current-weather');
+    if (!weather) return;
+    const iconElement = document.createElement('i');
+    iconElement.className = `fas ${icon}`;
+    const textElement = document.createElement('span');
+    textElement.textContent = text;
+    weather.replaceChildren(iconElement, textElement);
 }
 
-function fetchWeatherSimulated() {
-    const weatherConditions = [
-        { icon: 'fa-sun', text: 'Sunny, 32°C' },
-        { icon: 'fa-cloud-sun', text: 'Partly Cloudy, 30°C' },
-        { icon: 'fa-cloud-rain', text: 'Light Rain, 28°C' },
-        { icon: 'fa-cloud-showers-heavy', text: 'Heavy Rain, 26°C' }
-    ];
+function describeWeatherCode(code) {
+    if (code === 0) return 'Clear';
+    if ([1, 2, 3].includes(code)) return 'Cloudy';
+    if ([45, 48].includes(code)) return 'Fog';
+    if (code >= 51 && code <= 57) return 'Drizzle';
+    if (code >= 61 && code <= 67) return 'Rain';
+    if (code >= 71 && code <= 77) return 'Snow';
+    if (code >= 80 && code <= 82) return 'Rain showers';
+    if (code >= 85 && code <= 86) return 'Snow showers';
+    if (code >= 95) return 'Thunderstorm';
+    return 'Weather unavailable';
+}
 
-    const randomWeather = weatherConditions[Math.floor(Math.random() * weatherConditions.length)];
-    document.getElementById('current-weather').innerHTML = `
-        <i class="fas ${randomWeather.icon}"></i>
-        <span>${randomWeather.text}</span>
-    `;
+function weatherIconForCode(code) {
+    if (code === 0) return 'fa-sun';
+    if (code >= 51 && code <= 67) return 'fa-cloud-rain';
+    if (code >= 80 && code <= 82) return 'fa-cloud-showers-heavy';
+    if (code >= 95) return 'fa-cloud-bolt';
+    return 'fa-cloud-sun';
+}
+
+async function fetchWeather() {
+    if (!AppState.currentLocation) {
+        setWeatherLabel('Location required for local weather');
+        return null;
+    }
+
+    const { lat, lng } = AppState.currentLocation;
+    const url = `${API_CONFIG.weather.baseUrl}?latitude=${lat}&longitude=${lng}&current=temperature_2m,precipitation,weather_code&timezone=UTC`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 12000);
+    try {
+        const response = await fetch(url, { signal: controller.signal });
+        if (!response.ok) throw new Error(`Weather service returned ${response.status}`);
+        const data = await response.json();
+        if (!data.current || !Number.isFinite(Number(data.current.temperature_2m))) {
+            throw new Error('Weather service returned an incomplete current forecast.');
+        }
+        const description = describeWeatherCode(data.current.weather_code);
+        setWeatherLabel(`${description}, ${Math.round(data.current.temperature_2m)}°C`, weatherIconForCode(data.current.weather_code));
+        return data.current;
+    } catch (error) {
+        setWeatherLabel('Local weather unavailable', 'fa-circle-exclamation');
+        throw error;
+    } finally {
+        clearTimeout(timeoutId);
+    }
 }
 
 // City Functions
@@ -690,112 +888,246 @@ function filterCities(query) {
 
 function selectCity(city) {
     AppState.selectedCity = city;
+    AppState.placeQueryId = (AppState.placeQueryId || 0) + 1;
     document.getElementById('selected-city-name').textContent = city.name;
+    AppState.activePlaceCategory = null;
+    document.getElementById('category-search').value = '';
+    document.getElementById('place-text-filter').value = '';
+    document.getElementById('distance-filter').value = 'any';
+    document.getElementById('visit-date').value = '';
+    document.getElementById('visit-start').value = '';
+    document.getElementById('visit-end').value = '';
+    initializeCityMap(city);
     loadPlaces(city.name);
     showScreen('place-screen');
 
-    // Update map to city location
     if (AppState.map) {
         AppState.map.setView([city.lat, city.lng], 13);
-        AppState.marker.setLatLng([city.lat, city.lng]);
     }
 }
 
-// Place Functions
 function loadPlaces(cityName) {
-    const placeList = document.getElementById('place-list');
-    placeList.innerHTML = '';
+    AppState.placeSearchError = '';
+    AppState.places = (cityPlaces[cityName] || []).map(place => ({
+        ...place,
+        openingHours: place.hours,
+        dataSource: 'Curated example',
+        distance: Number(place.distance) || 0
+    }));
+    document.getElementById('category-source').textContent = 'Curated examples';
+    document.getElementById('city-map-caption').textContent = `Curated examples · ${cityName}`;
+    renderPlaces();
+    renderCityPlaceMarkers(AppState.places);
+}
 
-    // Get places for the selected city
-    const places = cityPlaces[cityName] || [];
+function renderCategoryBrowser(query = '') {
+    const groups = document.getElementById('category-groups');
+    if (!groups) return;
+    const normalizedQuery = query.trim().toLowerCase();
+    const filtered = placeCategories.filter(category =>
+        category.label.toLowerCase().includes(normalizedQuery) ||
+        category.group.toLowerCase().includes(normalizedQuery)
+    );
+    const groupNames = [...new Set(filtered.map(category => category.group))];
+    groups.replaceChildren();
 
-    if (places.length === 0) {
-        placeList.innerHTML = `
-            <div class="empty-state">
-                <i class="fas fa-map-marker-alt"></i>
-                <p>${t('noPlacesFound')}</p>
-                <p class="text-muted">${t('tryDifferent')}</p>
-            </div>
-        `;
+    const allButton = document.createElement('button');
+    allButton.type = 'button';
+    allButton.className = `category-chip${AppState.activePlaceCategory ? '' : ' selected'}`;
+    allButton.innerHTML = '<i class="fas fa-layer-group"></i><span>All places</span>';
+    allButton.onclick = () => selectPlaceCategory('all');
+    groups.appendChild(allButton);
+
+    groupNames.forEach(groupName => {
+        const group = document.createElement('details');
+        group.className = 'category-group';
+        group.open = normalizedQuery.length > 0;
+        const summary = document.createElement('summary');
+        summary.textContent = groupName;
+        group.appendChild(summary);
+        const chips = document.createElement('div');
+        chips.className = 'category-chips';
+        filtered.filter(category => category.group === groupName).forEach(category => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = `category-chip${AppState.activePlaceCategory === category.id ? ' selected' : ''}`;
+            button.innerHTML = `<i class="fas ${category.icon}"></i><span>${escapeHtml(category.label)}</span>`;
+            button.onclick = () => selectPlaceCategory(category.id);
+            chips.appendChild(button);
+        });
+        group.appendChild(chips);
+        groups.appendChild(group);
+    });
+
+    if (filtered.length === 0) {
+        const empty = document.createElement('p');
+        empty.className = 'filter-note';
+        empty.textContent = 'No categories match that search.';
+        groups.appendChild(empty);
+    }
+}
+
+async function selectPlaceCategory(categoryId) {
+    AppState.activePlaceCategory = categoryId === 'all' ? null : categoryId;
+    AppState.placeQueryId = (AppState.placeQueryId || 0) + 1;
+    const requestId = AppState.placeQueryId;
+    renderCategoryBrowser(document.getElementById('category-search').value);
+    if (!AppState.activePlaceCategory) {
+        AppState.placeSearchError = '';
+        loadPlaces(AppState.selectedCity?.name);
         return;
     }
 
-    places.forEach(place => {
-        const placeCard = document.createElement('div');
-        placeCard.className = 'place-card';
-        placeCard.innerHTML = `
-            <h4>${place.name}</h4>
-            <p>${place.address}</p>
-            <div class="meta">
-                <span><i class="fas fa-clock"></i> ${place.hours}</span>
-                <span><i class="fas fa-road"></i> ${place.distance} km</span>
-            </div>
-        `;
-        placeCard.onclick = () => selectPlace(place);
-        placeList.appendChild(placeCard);
-    });
-}
-
-function filterPlaces() {
-    const category = document.getElementById('category-filter').value;
-    const distance = document.getElementById('distance-filter').value;
-    const timeFilter = document.getElementById('time-filter').value;
-
-    let filteredPlaces = cityPlaces[AppState.selectedCity?.name] || [];
-
-    filteredPlaces = filteredPlaces.filter(place => {
-        // Category filter
-        if (category !== 'all' && place.category !== category) {
-            return false;
-        }
-        // Distance filter
-        if (distance !== 'any' && place.distance > parseInt(distance)) {
-            return false;
-        }
-        // Time filter
-        if (timeFilter !== 'any') {
-            const now = new Date();
-            const currentHour = now.getHours();
-            
-            if (timeFilter === 'now') {
-                // Would check if currently open - for demo, we'll assume all are open
-                return true;
-            } else if (timeFilter === 'morning' && (currentHour < 6 || currentHour >= 12)) {
-                return false;
-            } else if (timeFilter === 'afternoon' && (currentHour < 12 || currentHour >= 18)) {
-                return false;
-            } else if (timeFilter === 'evening' && (currentHour < 18 || currentHour >= 22)) {
-                return false;
-            } else if (timeFilter === 'night' && (currentHour >= 6 && currentHour < 22)) {
-                return false;
-            }
-        }
-        return true;
-    });
+    const category = placeCategories.find(item => item.id === AppState.activePlaceCategory);
+    if (!category || !AppState.selectedCity) return;
 
     const placeList = document.getElementById('place-list');
-    placeList.innerHTML = '';
+    placeList.innerHTML = '<div class="empty-state"><i class="fas fa-spinner fa-spin"></i><p>Searching OpenStreetMap…</p></div>';
+    document.getElementById('category-source').textContent = 'Searching OpenStreetMap…';
+    document.getElementById('city-map-caption').textContent = `${category.label} near ${AppState.selectedCity.name}`;
+    AppState.placeSearchError = '';
 
+    try {
+        const places = await fetchOpenStreetMapPlaces(category, AppState.selectedCity, 15000);
+        if (requestId !== AppState.placeQueryId) return;
+        AppState.places = places;
+        AppState.placeSearchError = '';
+        document.getElementById('category-source').textContent = 'OpenStreetMap data';
+        document.getElementById('city-map-caption').textContent = `${places.length} OpenStreetMap result${places.length === 1 ? '' : 's'} · ${AppState.selectedCity.name}`;
+        renderPlaces();
+        renderCityPlaceMarkers(places);
+    } catch (error) {
+        if (requestId !== AppState.placeQueryId) return;
+        console.error('Place search failed:', error);
+        document.getElementById('category-source').textContent = 'Search unavailable';
+        AppState.places = [];
+        AppState.placeSearchError = 'OpenStreetMap search is temporarily unavailable. Check your connection or try again.';
+        renderPlaces();
+        const retryButton = document.createElement('button');
+        retryButton.className = 'btn btn-outline';
+        retryButton.textContent = 'Try again';
+        retryButton.onclick = () => selectPlaceCategory(category.id);
+        document.getElementById('place-list').appendChild(retryButton);
+        renderCityPlaceMarkers([]);
+    }
+}
+
+async function fetchOpenStreetMapPlaces(category, center, radius) {
+    const wait = Math.max(0, 1000 - (Date.now() - (AppState.lastCategorySearchAt || 0)));
+    if (wait) await new Promise(resolve => setTimeout(resolve, wait));
+    AppState.lastCategorySearchAt = Date.now();
+
+    const [tagKey, tagValue] = category.tags[0];
+    const params = new URLSearchParams({
+        q: (category.searchTerm || tagValue.replace(/_/g, ' ')).toLowerCase(),
+        lat: String(center.lat),
+        lon: String(center.lng),
+        limit: '40',
+        lang: currentLanguage === 'id' ? 'default' : 'en',
+        osm_tag: `${tagKey}:${tagValue}`
+    });
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+    try {
+        const response = await fetch(`${API_CONFIG.photon.baseUrl}?${params}`, { signal: controller.signal });
+        if (!response.ok) throw new Error(`Place search returned ${response.status}`);
+        const data = await response.json();
+        const seen = new Set();
+        return (data.features || []).reduce((places, feature) => {
+            const properties = feature.properties || {};
+            const id = `${properties.osm_type}-${properties.osm_id}`;
+            if (seen.has(id)) return places;
+            seen.add(id);
+            const [lng, lat] = feature.geometry?.coordinates || [];
+            if (!Number.isFinite(lat) || !Number.isFinite(lng)) return places;
+            if (properties.osm_key !== tagKey || properties.osm_value !== tagValue) return places;
+            const distance = distanceBetweenKm(center.lat, center.lng, lat, lng);
+            if (distance > radius / 1000) return places;
+            const address = [
+                properties.housenumber,
+                properties.street,
+                properties.locality,
+                properties.district,
+                properties.city
+            ].filter(Boolean).join(', ');
+            places.push({
+                id: `photon-${id}`,
+                name: properties.name || properties.street || category.label,
+                category: category.id,
+                categoryLabel: category.label,
+                address: address || [properties.city, properties.state, properties.country].filter(Boolean).join(', ') || 'Address not listed in OpenStreetMap',
+                lat,
+                lng,
+                distance: Number(distance.toFixed(1)),
+                hours: '',
+                openingHours: '',
+                dataSource: 'OpenStreetMap via Photon'
+            });
+            return places;
+        }, []).sort((a, b) => a.distance - b.distance);
+    } finally {
+        clearTimeout(timeoutId);
+    }
+}
+
+function distanceBetweenKm(lat1, lng1, lat2, lng2) {
+    const radians = value => value * Math.PI / 180;
+    const deltaLat = radians(lat2 - lat1);
+    const deltaLng = radians(lng2 - lng1);
+    const a = Math.sin(deltaLat / 2) ** 2 +
+        Math.cos(radians(lat1)) * Math.cos(radians(lat2)) *
+        Math.sin(deltaLng / 2) ** 2;
+    return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function renderPlaces() {
+    const placeList = document.getElementById('place-list');
+    if (!placeList) return;
+    placeList.replaceChildren();
+    const filteredPlaces = filterPlaces(false);
+
+    if (AppState.placeSearchError) {
+        placeList.innerHTML = `<div class="empty-state"><i class="fas fa-triangle-exclamation"></i><p>${escapeHtml(AppState.placeSearchError)}</p></div>`;
+        return;
+    }
     if (filteredPlaces.length === 0) {
         placeList.innerHTML = `
             <div class="empty-state">
                 <i class="fas fa-map-marker-alt"></i>
-                <p>${t('noPlacesFound')}</p>
-                <p class="text-muted">${t('tryDifferent')}</p>
+                <p>${AppState.activePlaceCategory ? 'No matching places found.' : t('noPlacesFound')}</p>
+                <p class="text-muted">${AppState.activePlaceCategory ? 'Try another category or a wider distance.' : t('tryDifferent')}</p>
             </div>
         `;
         return;
     }
 
     filteredPlaces.forEach(place => {
-        const placeCard = document.createElement('div');
+        const schedule = place.openingHours || place.hours;
+        const startTime = document.getElementById('visit-start')?.value || '';
+        const endTime = document.getElementById('visit-end')?.value || '';
+        const timeIsFiltered = Boolean(startTime || endTime);
+        const targetStart = startTime || shiftTime(endTime, -60);
+        const targetEnd = endTime || shiftTime(startTime, 60);
+        const scheduleStatus = timeIsFiltered
+            ? checkOpeningHours(place, document.getElementById('visit-date')?.value, targetStart, targetEnd)
+            : null;
+        const unknownHours = !schedule || (timeIsFiltered && scheduleStatus === null);
+        const placeCard = document.createElement('button');
+        placeCard.type = 'button';
         placeCard.className = 'place-card';
+        const hoursLabel = unknownHours
+            ? schedule ? 'Hours may be incomplete · verify' : 'Hours unknown · verify before visiting'
+            : schedule;
+        const distanceLabel = Number.isFinite(Number(place.distance)) ? `${place.distance} km from city center` : 'Distance unavailable';
         placeCard.innerHTML = `
-            <h4>${place.name}</h4>
-            <p>${place.address}</p>
+            <span class="place-card-topline"><span class="place-category-label">${escapeHtml(place.categoryLabel || place.category || 'Place')}</span><span class="place-source">${escapeHtml(place.dataSource || 'Place')}</span></span>
+            <h4>${escapeHtml(place.name)}</h4>
+            <p>${escapeHtml(place.address || 'Address unavailable')}</p>
             <div class="meta">
-                <span><i class="fas fa-clock"></i> ${place.hours}</span>
-                <span><i class="fas fa-road"></i> ${place.distance} km</span>
+                <span class="${unknownHours ? 'hours-unknown' : ''}"><i class="fas fa-clock"></i> ${escapeHtml(hoursLabel)}</span>
+                <span><i class="fas fa-road"></i> ${escapeHtml(distanceLabel)}</span>
             </div>
         `;
         placeCard.onclick = () => selectPlace(place);
@@ -803,221 +1135,563 @@ function filterPlaces() {
     });
 }
 
+function filterPlaces(render = true) {
+    const distanceFilter = document.getElementById('distance-filter');
+    const textFilter = document.getElementById('place-text-filter');
+    const startField = document.getElementById('visit-start');
+    const endField = document.getElementById('visit-end');
+    const dateField = document.getElementById('visit-date');
+    const maxDistance = distanceFilter?.value === 'any' ? Infinity : Number(distanceFilter?.value);
+    const query = (textFilter?.value || '').trim().toLowerCase();
+    const startTime = startField?.value || '';
+    const endTime = endField?.value || '';
+    const hasTimeFilter = Boolean(startTime || endTime);
+    let targetStart = startTime;
+    let targetEnd = endTime;
+    if (hasTimeFilter && !targetStart) targetStart = shiftTime(targetEnd, -60);
+    if (hasTimeFilter && !targetEnd) targetEnd = shiftTime(targetStart, 60);
+    const unknownHours = [];
+    const filteredPlaces = AppState.places.filter(place => {
+        if (Number(place.distance) > maxDistance) return false;
+        if (query && !`${place.name} ${place.address} ${place.categoryLabel || place.category}`.toLowerCase().includes(query)) return false;
+        if (hasTimeFilter) {
+            const status = checkOpeningHours(place, dateField?.value, targetStart, targetEnd);
+            if (status === false) return false;
+            if (status === null) unknownHours.push(place);
+        }
+        return true;
+    });
+
+    const note = document.getElementById('place-hours-note');
+    if (note) {
+        if (!hasTimeFilter) {
+            note.textContent = 'Any time · places without published hours are marked for verification.';
+        } else {
+            const timeLabel = `${targetStart}–${targetEnd}${dateField?.value ? ` on ${dateField.value}` : ''}`;
+            note.textContent = `${timeLabel}: ${filteredPlaces.length - unknownHours.length} known matches; ${unknownHours.length} place${unknownHours.length === 1 ? '' : 's'} have unverified hours and may be closed.`;
+        }
+    }
+    if (render) renderPlaces();
+    return filteredPlaces;
+}
+
+function shiftTime(value, minutes) {
+    if (!value) return '';
+    const [hour, minute] = value.split(':').map(Number);
+    const shifted = Math.max(0, Math.min(1439, hour * 60 + minute + minutes));
+    return `${String(Math.floor(shifted / 60)).padStart(2, '0')}:${String(shifted % 60).padStart(2, '0')}`;
+}
+
+function checkOpeningHours(place, dateValue, startTime, endTime) {
+    const schedule = (place.openingHours || place.hours || '').trim();
+    if (!schedule) return null;
+    if (/24\s*\/\s*7|24\s*(?:jam|hours?)/i.test(schedule)) return true;
+    if (/^(?:closed|off|tutup)$/i.test(schedule)) return false;
+
+    const visitDate = dateValue ? new Date(`${dateValue}T12:00:00`) : new Date();
+    const weekdayCodes = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+    const weekday = weekdayCodes[visitDate.getDay()];
+    const targetStart = timeToMinutes(startTime);
+    let targetEnd = timeToMinutes(endTime);
+    if (targetStart === null || targetEnd === null) return null;
+    if (targetEnd < targetStart) targetEnd += 1440;
+
+    const segments = schedule.split(';').map(segment => segment.trim()).filter(Boolean);
+    let matchingDayRule = false;
+    for (const segment of segments) {
+        const timeMatch = segment.match(/(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/g);
+        const dayMatch = segment.match(/^(Mo|Tu|We|Th|Fr|Sa|Su)(?:\s*-\s*(Mo|Tu|We|Th|Fr|Sa|Su))?(?:\s*,\s*(Mo|Tu|We|Th|Fr|Sa|Su))*/);
+        if (dayMatch && !dayRangeIncludes(dayMatch[0], weekday)) continue;
+        matchingDayRule = true;
+        if (/\b(?:off|closed|tutup)\b/i.test(segment)) continue;
+        if (!timeMatch) return null;
+        for (const range of timeMatch) {
+            const [openText, closeText] = range.split('-');
+            const open = timeToMinutes(openText);
+            let close = timeToMinutes(closeText);
+            if (open === null || close === null) return null;
+            if (close <= open) close += 1440;
+            if (targetStart >= open && targetEnd <= close) return true;
+        }
+    }
+    return matchingDayRule ? false : null;
+}
+
+function dayRangeIncludes(dayExpression, targetDay) {
+    const dayIndex = { Mo: 0, Tu: 1, We: 2, Th: 3, Fr: 4, Sa: 5, Su: 6 };
+    const days = dayExpression.match(/Mo|Tu|We|Th|Fr|Sa|Su/g) || [];
+    if (days.length === 0) return true;
+    for (let index = 0; index < days.length; index += 1) {
+        const current = days[index];
+        const next = days[index + 1];
+        if (next && dayExpression.includes(`${current}-${next}`)) {
+            let cursor = dayIndex[current];
+            while (true) {
+                if (Object.keys(dayIndex).find(day => dayIndex[day] === cursor) === targetDay) return true;
+                if (cursor === dayIndex[next]) break;
+                cursor = (cursor + 1) % 7;
+            }
+            index += 1;
+        } else if (current === targetDay) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function timeToMinutes(value) {
+    const match = /^(\d{1,2}):(\d{2})$/.exec((value || '').trim());
+    if (!match) return null;
+    const hour = Number(match[1]);
+    const minute = Number(match[2]);
+    if (hour > 24 || minute > 59 || (hour === 24 && minute !== 0)) return null;
+    return hour * 60 + minute;
+}
+
+function resetPlaceFilters() {
+    document.getElementById('category-search').value = '';
+    document.getElementById('place-text-filter').value = '';
+    document.getElementById('distance-filter').value = 'any';
+    document.getElementById('visit-date').value = '';
+    document.getElementById('visit-start').value = '';
+    document.getElementById('visit-end').value = '';
+    selectPlaceCategory('all');
+}
+
+function renderCityPlaceMarkers(places) {
+    if (!AppState.cityPlaceMarkers) return;
+    AppState.cityPlaceMarkers.clearLayers();
+    places.forEach(place => {
+        if (!Number.isFinite(Number(place.lat)) || !Number.isFinite(Number(place.lng))) return;
+        const marker = L.circleMarker([Number(place.lat), Number(place.lng)], {
+            radius: 8,
+            color: '#ffffff',
+            weight: 2,
+            fillColor: '#c62828',
+            fillOpacity: 0.95
+        });
+        const popup = `<strong>${escapeHtml(place.name)}</strong><br>${escapeHtml(place.categoryLabel || place.category || 'Place')}<br>${escapeHtml(place.address || 'Address unavailable')}<br>${place.openingHours ? `Hours: ${escapeHtml(place.openingHours)}` : 'Opening hours unknown'}`;
+        marker.bindPopup(popup);
+        AppState.cityPlaceMarkers.addLayer(marker);
+    });
+}
+
 function selectPlace(place) {
     document.getElementById('search-input').value = place.name;
-
-    // Show route modal
+    AppState.selectedDestination = place;
     showRouteModal(place);
 }
 
 // Search Functions
 async function handleSearch() {
-    const query = document.getElementById('search-input').value;
+    const query = document.getElementById('search-input').value.trim();
+    const resultsPanel = document.getElementById('search-results-panel');
+    if (!query || !resultsPanel) return;
+    const requestId = (AppState.searchRequestId || 0) + 1;
+    AppState.searchRequestId = requestId;
+    resultsPanel.classList.remove('hidden');
+    resultsPanel.textContent = 'Searching OpenStreetMap…';
 
-    if (!query) return;
-
-    if (AppState.useRealAPIs) {
-        // Use real Nominatim API for place search
-        try {
-            const results = await searchPlaces(query);
-            if (results && results.length > 0) {
-                // Show first result or let user choose
-                const place = results[0];
-                showSearchResults(results);
-            } else {
-                alert(t('noResults'));
-            }
-        } catch (error) {
-            console.error('Search error:', error);
-            // Fallback to simulated search
-            fallbackSearch(query);
-        }
-    } else {
-        fallbackSearch(query);
+    try {
+        const results = await searchPlaces(query);
+        if (requestId !== AppState.searchRequestId) return;
+        showSearchResults(results);
+    } catch (error) {
+        if (requestId !== AppState.searchRequestId) return;
+        console.error('Search error:', error);
+        resultsPanel.textContent = 'Place search is unavailable right now. Check your connection and try again.';
     }
 }
 
 async function searchPlaces(query) {
-    const url = `${API_CONFIG.nominatim.baseUrl}?format=${API_CONFIG.nominatim.format}&q=${encodeURIComponent(query)}&limit=5&countrycodes=id`;
-
-    const response = await fetch(url);
+    const params = new URLSearchParams({
+        format: API_CONFIG.nominatim.format,
+        q: query,
+        limit: '5',
+        countrycodes: 'id',
+        addressdetails: '1'
+    });
+    const center = AppState.currentLocation || AppState.selectedCity;
+    if (center) {
+        const delta = 0.18;
+        params.set('viewbox', `${center.lng - delta},${center.lat + delta},${center.lng + delta},${center.lat - delta}`);
+    }
+    const response = await fetch(`${API_CONFIG.nominatim.baseUrl}?${params}`);
 
     if (!response.ok) {
-        throw new Error('Search failed');
+        throw new Error(`Search service returned ${response.status}`);
     }
 
     const data = await response.json();
 
     return data.map(item => ({
+        id: `nominatim-${item.place_id}`,
         name: item.display_name.split(',')[0],
         fullName: item.display_name,
         lat: parseFloat(item.lat),
         lng: parseFloat(item.lon),
         address: item.display_name,
         type: item.type,
-        category: item.class
+        category: item.class,
+        categoryLabel: item.type || item.class || 'Place',
+        openingHours: '',
+        hours: '',
+        distance: center ? Number(distanceBetweenKm(center.lat, center.lng, parseFloat(item.lat), parseFloat(item.lon)).toFixed(1)) : null,
+        dataSource: 'OpenStreetMap'
     }));
 }
 
 function showSearchResults(results) {
-    // For now, just select the first result
-    // In future, could show a list for user to choose
-    const place = results[0];
-    document.getElementById('search-input').value = place.name;
-
-    // Center map on the place
-    if (AppState.map) {
-        AppState.map.setView([place.lat, place.lng], 15);
-        AppState.marker.setLatLng([place.lat, place.lng]);
-        AppState.marker.bindPopup(escapeHtml(place.name)).openPopup();
+    const panel = document.getElementById('search-results-panel');
+    if (!results.length) {
+        panel.textContent = 'No places found in Indonesia. Try a nearby landmark or another spelling.';
+        AppState.placeMarkers.clearLayers();
+        return;
     }
 
+    panel.replaceChildren();
+    panel.setAttribute('role', 'listbox');
+    AppState.placeMarkers.clearLayers();
+    results.forEach(place => {
+        const item = document.createElement('button');
+        item.type = 'button';
+        item.className = 'search-result';
+        item.setAttribute('role', 'option');
+        item.innerHTML = `<span><strong>${escapeHtml(place.name)}</strong><small>${escapeHtml(place.fullName)}</small></span><i class="fas fa-arrow-up-right-from-square"></i>`;
+        item.onclick = () => selectSearchResult(place);
+        panel.appendChild(item);
+
+        const marker = L.marker([place.lat, place.lng], { icon: createLeadMarkerIcon() });
+        marker.bindPopup(`<strong>${escapeHtml(place.name)}</strong><br>${escapeHtml(place.fullName)}`);
+        AppState.placeMarkers.addLayer(marker);
+    });
+    if (AppState.map) {
+        if (results.length === 1) {
+            AppState.map.setView([results[0].lat, results[0].lng], 15);
+        } else {
+            const bounds = L.latLngBounds(results.map(place => [place.lat, place.lng]));
+            AppState.map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
+        }
+    }
+}
+
+function selectSearchResult(place) {
+    document.getElementById('search-input').value = place.name;
+    const panel = document.getElementById('search-results-panel');
+    panel.classList.add('hidden');
+    if (AppState.map) AppState.map.setView([place.lat, place.lng], 15);
     showRouteModal(place);
 }
 
 function fallbackSearch(query) {
-    // Simulate finding a place
     const foundPlace = samplePlaces.find(place =>
         place.name.toLowerCase().includes(query.toLowerCase())
     );
 
     if (foundPlace) {
-        showRouteModal(foundPlace);
+        showSearchResults([{
+            ...foundPlace,
+            fullName: foundPlace.address,
+            dataSource: 'Curated example'
+        }]);
     } else {
-        // If not found, simulate a destination
-        const simulatedPlace = {
-            name: query,
-            lat: -6.2088 + (Math.random() - 0.5) * 0.1,
-            lng: 106.8456 + (Math.random() - 0.5) * 0.1
-        };
-        showRouteModal(simulatedPlace);
+        const resultsPanel = document.getElementById('search-results-panel');
+        resultsPanel.classList.remove('hidden');
+        resultsPanel.textContent = 'No curated example matches. Connect to OpenStreetMap search for real place results.';
     }
 }
 
 // Route Functions
+function getRouteOrigin() {
+    if (AppState.currentLocation) {
+        return { lat: AppState.currentLocation.lat, lng: AppState.currentLocation.lng, label: 'Current location' };
+    }
+    if (AppState.selectedCity) {
+        return { lat: AppState.selectedCity.lat, lng: AppState.selectedCity.lng, label: `${AppState.selectedCity.name} city center` };
+    }
+    return null;
+}
+
 async function showRouteModal(destination) {
     const modal = document.getElementById('nav-modal');
     const routeOptions = document.getElementById('route-options');
-
+    AppState.selectedDestination = destination;
+    AppState.selectedRoute = null;
+    AppState.routeWeather = null;
+    AppState.routeWeatherRequestId = (AppState.routeWeatherRequestId || 0) + 1;
+    AppState.isNavigating = false;
+    document.getElementById('start-route-button').disabled = true;
+    document.getElementById('rain-alert-card').classList.add('hidden');
     modal.classList.add('active');
-    routeOptions.innerHTML = '<p>' + t('loading') + '</p>';
 
-    // Generate route options based on vehicle type
-    if (AppState.useRealAPIs && AppState.currentLocation) {
-        try {
-            const routes = await fetchRealRoutes(destination);
-            displayRouteOptions(routes, destination);
-        } catch (error) {
-            console.error('Route error:', error);
-            // Fallback to simulated routes
-            const routes = generateRouteOptions(destination);
-            displayRouteOptions(routes, destination);
-        }
-    } else {
-        const routes = generateRouteOptions(destination);
-        displayRouteOptions(routes, destination);
+    const origin = getRouteOrigin();
+    if (!origin || !Number.isFinite(Number(destination.lat)) || !Number.isFinite(Number(destination.lng))) {
+        routeOptions.innerHTML = '<div class="empty-state"><i class="fas fa-location-crosshairs"></i><p>Allow location access or select a city before planning a route.</p></div>';
+        document.getElementById('route-weather-info').innerHTML = '<i class="fas fa-circle-info"></i><span>Set a starting location to check route weather.</span>';
+        return;
+    }
+    AppState.routeOrigin = origin;
+
+    routeOptions.innerHTML = '<p class="loading-note"><i class="fas fa-spinner fa-spin"></i> Requesting a road route…</p>';
+    document.getElementById('route-weather-info').innerHTML = '<i class="fas fa-cloud-sun"></i><span>Checking forecast along the route…</span>';
+
+    try {
+        if (!AppState.useRealAPIs) throw new Error('Live routing is disabled.');
+        const routes = await fetchRealRoutes(destination, origin);
+        displayRouteOptions(routes, destination, origin);
+    } catch (error) {
+        console.error('Route request failed; showing a clearly labeled estimate:', error);
+        displayRouteOptions(generateRouteOptions(destination, origin), destination, origin);
     }
 }
 
-async function fetchRealRoutes(destination) {
-    const startLat = AppState.currentLocation ? AppState.currentLocation.lat : -6.2088;
-    const startLng = AppState.currentLocation ? AppState.currentLocation.lng : 106.8456;
-
-    // OSRM API request
-    const url = `${API_CONFIG.osrm.baseUrl}/driving/${startLng},${startLat};${destination.lng},${destination.lat}?overview=full&geometries=geojson`;
-
+async function fetchRealRoutes(destination, origin) {
+    const url = `${API_CONFIG.osrm.baseUrl}/driving/${origin.lng},${origin.lat};${destination.lng},${destination.lat}?overview=full&geometries=geojson`;
     const response = await fetch(url);
-
-    if (!response.ok) {
-        throw new Error('Route request failed');
-    }
-
+    if (!response.ok) throw new Error(`Routing service returned ${response.status}`);
     const data = await response.json();
-
-    if (data.code !== 'Ok' || !data.routes || data.routes.length === 0) {
-        throw new Error('No route found');
-    }
-
+    if (data.code !== 'Ok' || !data.routes || data.routes.length === 0) throw new Error('No road route was found.');
     const route = data.routes[0];
 
     return [{
         name: t('fastestRoute'),
-        distance: (route.distance / 1000).toFixed(1) + ' km',
-        time: Math.round(route.duration / 60) + ' min',
+        distance: `${(route.distance / 1000).toFixed(1)} km`,
+        distanceKm: route.distance / 1000,
+        time: `${Math.max(1, Math.round(route.duration / 60))} min`,
+        durationMinutes: Math.max(1, route.duration / 60),
+        durationSeconds: route.duration,
         geometry: route.geometry,
         real: true
     }];
 }
 
-function displayRouteOptions(routes, destination) {
+function displayRouteOptions(routes, destination, origin) {
     const routeOptions = document.getElementById('route-options');
-    routeOptions.innerHTML = '';
+    routeOptions.replaceChildren();
+    document.getElementById('start-route-button').disabled = routes.length === 0;
+    if (routes.length === 0) {
+        routeOptions.innerHTML = '<p class="empty-state">No route options are available for this destination.</p>';
+        AppState.selectedRoute = null;
+        return;
+    }
 
     routes.forEach((route, index) => {
-        const routeOption = document.createElement('div');
-        routeOption.className = 'route-option' + (index === 0 ? ' selected' : '');
+        const routeOption = document.createElement('button');
+        routeOption.type = 'button';
+        routeOption.className = `route-option${index === 0 ? ' selected' : ''}`;
         routeOption.innerHTML = `
-            <h4>${route.name} ${route.real ? '<span style="font-size:0.75rem;color:#10B981;">(' + t('realData') + ')</span>' : '<span style="font-size:0.75rem;color:#F59E0B;">(' + t('simulatedData') + ')</span>'}</h4>
+            <h4>${escapeHtml(route.name)} <span class="route-data-badge ${route.real ? 'real' : 'estimate'}">(${route.real ? 'Road route' : 'Estimate only'})</span></h4>
             <div class="meta">
-                <span><i class="fas fa-road"></i> ${route.distance}</span>
-                <span><i class="fas fa-clock"></i> ${route.time}</span>
+                <span><i class="fas fa-road"></i> ${escapeHtml(route.distance)}</span>
+                <span><i class="fas fa-clock"></i> ${escapeHtml(route.time)}</span>
             </div>
         `;
         routeOption.onclick = () => selectRoute(routeOption, route);
         routeOptions.appendChild(routeOption);
     });
 
-    // Store selected route for navigation
     AppState.selectedRoute = routes[0];
     AppState.selectedDestination = destination;
-
-    // Simulate weather check on route
-    setTimeout(() => {
-        document.getElementById('route-weather-info').innerHTML = `
-            <i class="fas fa-cloud-sun"></i>
-            <span>${t('clearSkies')}</span>
-        `;
-    }, 1000);
+    AppState.routeOrigin = origin;
+    AppState.dismissedRainAlertKey = null;
+    updateRouteWeather(routes[0], destination, origin);
 }
 
-function generateRouteOptions(destination) {
-    const baseRoutes = [
-        { name: 'Fastest Route', distance: '5.2 km', time: '15 min' },
-        { name: 'Shortest Route', distance: '4.8 km', time: '18 min' },
-        { name: 'Eco Route', distance: '6.1 km', time: '20 min' }
-    ];
-
-    // Customize based on vehicle type
-    if (AppState.activeVehicle) {
-        const vehicleType = AppState.activeVehicle.type;
-
-        if (vehicleType === 'motorcycle') {
-            return [
-                { name: 'Motorcycle Friendly', distance: '5.0 km', time: '14 min' },
-                { name: 'Scenic Route', distance: '6.5 km', time: '22 min' }
-            ];
-        } else if (vehicleType === 'truck') {
-            return [
-                { name: 'Truck Suitable', distance: '6.2 km', time: '20 min' },
-                { name: 'Highway Route', distance: '7.5 km', time: '18 min' }
-            ];
-        } else if (vehicleType === 'ev') {
-            return [
-                { name: 'EV Optimized', distance: '5.5 km', time: '16 min' },
-                { name: 'With Charging Stop', distance: '8.0 km', time: '28 min' }
-            ];
-        }
-    }
-
-    return baseRoutes;
+function generateRouteOptions(destination, origin = getRouteOrigin()) {
+    if (!origin) return [];
+    const directDistance = distanceBetweenKm(origin.lat, origin.lng, destination.lat, destination.lng);
+    const estimatedDistance = directDistance * 1.35;
+    const speedByVehicle = { motorcycle: 25, car: 30, ev: 30, truck: 20, angkot: 22, bus: 25 };
+    const speed = speedByVehicle[AppState.activeVehicle?.type] || 28;
+    const durationMinutes = Math.max(1, Math.round((estimatedDistance / speed) * 60));
+    return [{
+        name: 'Estimated route',
+        distance: `~${estimatedDistance.toFixed(1)} km`,
+        distanceKm: estimatedDistance,
+        time: `~${durationMinutes} min`,
+        durationMinutes,
+        geometry: { type: 'LineString', coordinates: [[origin.lng, origin.lat], [destination.lng, destination.lat]] },
+        real: false
+    }];
 }
 
 function selectRoute(element, route) {
-    document.querySelectorAll('.route-option').forEach(opt => {
-        opt.classList.remove('selected');
-    });
+    document.querySelectorAll('.route-option').forEach(option => option.classList.remove('selected'));
     element.classList.add('selected');
     AppState.selectedRoute = route;
+    updateRouteWeather(route, AppState.selectedDestination, AppState.routeOrigin);
+}
+
+function getRouteSamplePoints(route, destination, origin) {
+    let coordinates = route.geometry?.coordinates || [];
+    if (coordinates.length < 2) {
+        coordinates = [[origin.lng, origin.lat], [destination.lng, destination.lat]];
+    }
+    const points = coordinates.map(([lng, lat]) => ({ lat, lng }));
+    const cumulative = [0];
+    for (let index = 1; index < points.length; index += 1) {
+        cumulative[index] = cumulative[index - 1] + distanceBetweenKm(
+            points[index - 1].lat,
+            points[index - 1].lng,
+            points[index].lat,
+            points[index].lng
+        );
+    }
+    const totalDistance = cumulative[cumulative.length - 1];
+    return [0.2, 0.5, 0.8].map(fraction => {
+        const targetDistance = totalDistance * fraction;
+        let segment = cumulative.findIndex(distance => distance >= targetDistance);
+        if (segment < 1) segment = 1;
+        if (segment >= points.length) segment = points.length - 1;
+        const segmentStart = cumulative[segment - 1];
+        const segmentLength = cumulative[segment] - segmentStart;
+        const progress = segmentLength ? (targetDistance - segmentStart) / segmentLength : 0;
+        return {
+            lat: points[segment - 1].lat + (points[segment].lat - points[segment - 1].lat) * progress,
+            lng: points[segment - 1].lng + (points[segment].lng - points[segment - 1].lng) * progress,
+            distanceKm: targetDistance,
+            etaMinutes: Math.round((route.durationMinutes || 0) * fraction)
+        };
+    });
+}
+
+async function fetchWeatherForecastAt(point, etaMinutes, signal) {
+    const params = new URLSearchParams({
+        latitude: String(point.lat),
+        longitude: String(point.lng),
+        hourly: 'precipitation_probability,precipitation,weather_code',
+        forecast_days: '2',
+        timezone: 'UTC'
+    });
+    const response = await fetch(`${API_CONFIG.weather.baseUrl}?${params}`, { signal });
+    if (!response.ok) throw new Error(`Forecast service returned ${response.status}`);
+    const data = await response.json();
+    const times = data.hourly?.time || [];
+    const targetTime = Date.now() + etaMinutes * 60 * 1000;
+    let closestIndex = -1;
+    let closestDifference = Infinity;
+    times.forEach((time, index) => {
+        const timestamp = new Date(`${time}:00Z`).getTime();
+        const difference = Math.abs(timestamp - targetTime);
+        if (difference < closestDifference) {
+            closestDifference = difference;
+            closestIndex = index;
+        }
+    });
+    if (closestIndex < 0 || closestDifference > 2 * 60 * 60 * 1000) {
+        throw new Error('No hourly forecast is available for the route arrival time.');
+    }
+    return {
+        ...point,
+        etaMinutes,
+        forecastTime: times[closestIndex],
+        precipitationProbability: Number(data.hourly.precipitation_probability?.[closestIndex]),
+        precipitationMm: Number(data.hourly.precipitation?.[closestIndex]),
+        weatherCode: Number(data.hourly.weather_code?.[closestIndex])
+    };
+}
+
+async function updateRouteWeather(route, destination, origin) {
+    if (!route || !destination || !origin) return;
+    const requestId = (AppState.routeWeatherRequestId || 0) + 1;
+    AppState.routeWeatherRequestId = requestId;
+    const key = `${destination.lat},${destination.lng}:${route.distance}:${route.time}`;
+    AppState.routeWeather = { status: 'loading', key, points: [] };
+    updateRouteWeatherNote();
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 20000);
+    try {
+        const samplePoints = getRouteSamplePoints(route, destination, origin);
+        const forecasts = await Promise.all(samplePoints.map(point =>
+            fetchWeatherForecastAt(point, point.etaMinutes, controller.signal)
+        ));
+        if (requestId !== AppState.routeWeatherRequestId) return;
+        const rainPoints = forecasts.filter(point =>
+            point.precipitationProbability >= 40 ||
+            point.precipitationMm >= 0.1 ||
+            (point.weatherCode >= 51 && point.weatherCode <= 99)
+        );
+        AppState.routeWeather = {
+            status: 'ready',
+            key,
+            route,
+            destination,
+            points: forecasts,
+            rainPoints
+        };
+        updateRouteWeatherNote();
+        showRainAlertIfNeeded();
+    } catch (error) {
+        if (requestId !== AppState.routeWeatherRequestId) return;
+        console.error('Route weather check failed:', error);
+        AppState.routeWeather = { status: 'unavailable', key, points: [], error: error.message };
+        updateRouteWeatherNote();
+        document.getElementById('rain-alert-card').classList.add('hidden');
+    } finally {
+        clearTimeout(timeoutId);
+    }
+}
+
+function updateRouteWeatherNote() {
+    const note = document.getElementById('route-weather-info');
+    if (!note) return;
+    const weather = AppState.routeWeather;
+    let icon = 'fa-cloud-sun';
+    let text = 'Checking weather at several points along this route…';
+    if (weather?.status === 'ready') {
+        if (weather.rainPoints.length) {
+            icon = 'fa-cloud-showers-heavy';
+            const point = weather.rainPoints[0];
+            text = `Rain may be possible about ${point.distanceKm.toFixed(1)} km ahead. Forecasts are approximate.`;
+        } else {
+            text = 'No rain signal at sampled route points during the estimated trip. Forecasts can change.';
+        }
+    } else if (weather?.status === 'unavailable') {
+        icon = 'fa-circle-exclamation';
+        text = 'Live route weather is unavailable. No weather alert is being shown.';
+    }
+    const iconElement = document.createElement('i');
+    iconElement.className = `fas ${icon}`;
+    const textElement = document.createElement('span');
+    textElement.textContent = text;
+    note.replaceChildren(iconElement, textElement);
+}
+
+function showRainAlertIfNeeded() {
+    const weather = AppState.routeWeather;
+    const alertCard = document.getElementById('rain-alert-card');
+    if (!AppState.isNavigating || weather?.status !== 'ready' || weather.rainPoints.length === 0) {
+        alertCard.classList.add('hidden');
+        return;
+    }
+    if (weather.key === AppState.dismissedRainAlertKey) return;
+    const point = weather.rainPoints[0];
+    const severe = point.weatherCode >= 95 || point.precipitationMm >= 2.5;
+    document.getElementById('rain-alert-title').textContent = severe ? 'Severe weather ahead' : 'Rain possible along your route';
+    document.getElementById('rain-alert-summary').textContent =
+        `Rain may be possible about ${point.distanceKm.toFixed(1)} km ahead, in roughly ${point.etaMinutes} min.`;
+    const probability = Number.isFinite(point.precipitationProbability)
+        ? `${point.precipitationProbability}% chance`
+        : 'precipitation forecast';
+    const amount = Number.isFinite(point.precipitationMm) ? `${point.precipitationMm} mm/hour` : 'amount unavailable';
+    document.getElementById('rain-alert-details').textContent =
+        `Open-Meteo hourly forecast · ${probability} · ${amount}. Weather is a forecast, not a road-sensor observation.`;
+    alertCard.classList.remove('hidden');
+}
+
+function toggleRainAlertDetails() {
+    const details = document.getElementById('rain-alert-details');
+    const button = document.getElementById('rain-alert-expand');
+    const expanded = !details.classList.contains('hidden');
+    details.classList.toggle('hidden', expanded);
+    button.setAttribute('aria-expanded', String(!expanded));
+    button.textContent = expanded ? 'Details' : 'Hide details';
+}
+
+function dismissRainAlert() {
+    if (AppState.routeWeather?.key) AppState.dismissedRainAlertKey = AppState.routeWeather.key;
+    document.getElementById('rain-alert-card').classList.add('hidden');
 }
 
 function closeNavModal() {
@@ -1031,8 +1705,11 @@ function startNavigation() {
         return;
     }
 
+    const origin = AppState.routeOrigin || getRouteOrigin();
+    if (!origin) return;
+    AppState.isNavigating = true;
     AppState.journeyHistory.unshift({
-        from: AppState.currentLocation ? 'Current location' : 'Jakarta',
+        from: origin.label,
         to: AppState.selectedDestination.name,
         date: new Date().toLocaleDateString(),
         distance: AppState.selectedRoute.distance,
@@ -1042,60 +1719,32 @@ function startNavigation() {
     loadJourneyHistory();
 
     if (AppState.map) {
-        // Remove existing route layer
         if (AppState.routeLayer) {
             AppState.map.removeLayer(AppState.routeLayer);
         }
 
-        if (AppState.selectedRoute.real && AppState.selectedRoute.geometry) {
-            // Draw real route from OSRM
-            const coordinates = AppState.selectedRoute.geometry.coordinates.map(coord => [coord[1], coord[0]]);
+        const coordinates = AppState.selectedRoute.geometry.coordinates.map(coord => [coord[1], coord[0]]);
+        AppState.routeLayer = L.polyline(coordinates, {
+            color: '#c83f3b',
+            weight: 5,
+            opacity: 0.9,
+            dashArray: AppState.selectedRoute.real ? null : '10, 10'
+        }).addTo(AppState.map);
 
-            AppState.routeLayer = L.polyline(coordinates, {
-                color: '#D71920',
-                weight: 5,
-                opacity: 0.8
-            }).addTo(AppState.map);
-
-            AppState.map.fitBounds(AppState.routeLayer.getBounds(), { padding: [50, 50] });
-        } else {
-            // Draw simulated route
-            const startLat = AppState.currentLocation ? AppState.currentLocation.lat : -6.2088;
-            const startLng = AppState.currentLocation ? AppState.currentLocation.lng : 106.8456;
-            const destLat = AppState.selectedDestination.lat;
-            const destLng = AppState.selectedDestination.lng;
-
-            const routePoints = [
-                [startLat, startLng],
-                [startLat + (destLat - startLat) * 0.33, startLng + (destLng - startLng) * 0.33],
-                [startLat + (destLat - startLat) * 0.66, startLng + (destLng - startLng) * 0.66],
-                [destLat, destLng]
-            ];
-
-            AppState.routeLayer = L.polyline(routePoints, {
-                color: '#D71920',
-                weight: 5,
-                opacity: 0.8,
-                dashArray: '10, 10' // Dashed line to indicate simulated
-            }).addTo(AppState.map);
-
-            AppState.map.fitBounds(AppState.routeLayer.getBounds(), { padding: [50, 50] });
-        }
-
-        // Add destination marker
         if (AppState.destinationMarker) {
             AppState.map.removeLayer(AppState.destinationMarker);
         }
-        AppState.destinationMarker = L.marker([AppState.selectedDestination.lat, AppState.selectedDestination.lng])
+        AppState.destinationMarker = L.marker([AppState.selectedDestination.lat, AppState.selectedDestination.lng], { icon: createLeadMarkerIcon() })
             .addTo(AppState.map)
             .bindPopup(escapeHtml(AppState.selectedDestination.name))
             .openPopup();
+        showScreen('home-screen');
+        setTimeout(() => {
+            AppState.map.invalidateSize();
+            AppState.map.fitBounds(AppState.routeLayer.getBounds(), { padding: [50, 50] });
+            showRainAlertIfNeeded();
+        }, 150);
     }
-
-    // Show redesigned rain alert
-    setTimeout(() => {
-        showRainAlert();
-    }, 3000);
 }
 
 // Vehicle Functions
@@ -1116,7 +1765,8 @@ function loadVehicles() {
 
     AppState.vehicles.forEach((vehicle, index) => {
         const vehicleCard = document.createElement('div');
-        vehicleCard.className = 'vehicle-card' + (AppState.activeVehicle && AppState.activeVehicle.id === vehicle.id ? ' active' : '');
+        const isActive = AppState.activeVehicle && AppState.activeVehicle.id === vehicle.id;
+        vehicleCard.className = 'vehicle-card' + (isActive ? ' active' : '');
         vehicleCard.innerHTML = `
             <div class="vehicle-icon">
                 <i class="fas ${vehicleIcons[vehicle.type] || 'fa-car'}"></i>
@@ -1125,15 +1775,16 @@ function loadVehicles() {
                 <h4>${escapeHtml(vehicle.brand || 'Vehicle ' + (index + 1))}</h4>
                 <p>${escapeHtml(vehicle.plate || 'No plate')}</p>
                 <span class="vehicle-type-label">${escapeHtml(getVehicleTypeName(vehicle.type))}</span>
+                ${isActive ? '<span class="vehicle-active-label">Active vehicle</span>' : ''}
             </div>
             <div class="vehicle-actions">
-                <button class="btn btn-icon" onclick="selectVehicle(${index})" title="Select">
+                <button class="btn btn-icon" onclick="selectVehicle(${index})" title="Select vehicle" aria-label="Select vehicle">
                     <i class="fas fa-check"></i>
                 </button>
-                <button class="btn btn-icon" onclick="editVehicle(${index})" title="Edit">
+                <button class="btn btn-icon" onclick="editVehicle(${index})" title="Edit vehicle" aria-label="Edit vehicle">
                     <i class="fas fa-edit"></i>
                 </button>
-                <button class="btn btn-icon btn-danger" onclick="deleteVehicle(${index})" title="Delete">
+                <button class="btn btn-icon btn-danger" onclick="deleteVehicle(${index})" title="Delete vehicle" aria-label="Delete vehicle">
                     <i class="fas fa-trash"></i>
                 </button>
             </div>
@@ -1156,6 +1807,8 @@ function getVehicleTypeName(type) {
 
 function editVehicle(index) {
     const vehicle = AppState.vehicles[index];
+    if (!vehicle) return;
+    document.getElementById('vehicle-form').reset();
     document.getElementById('vehicle-type').value = vehicle.type;
     document.getElementById('vehicle-brand').value = vehicle.brand || '';
     document.getElementById('vehicle-plate').value = vehicle.plate || '';
@@ -1180,15 +1833,13 @@ function editVehicle(index) {
 }
 
 function deleteVehicle(index) {
-    const confirmed = confirm('Are you sure you want to delete this vehicle?');
+    const vehicle = AppState.vehicles[index];
+    if (!vehicle) return;
+    const confirmed = confirm(`Delete ${vehicle.brand || 'this vehicle'}?`);
     if (confirmed) {
-        AppState.vehicles.splice(index, 1);
-        
-        // If deleted vehicle was active, clear active vehicle
-        if (AppState.activeVehicle && AppState.vehicles.length > 0) {
-            AppState.activeVehicle = AppState.vehicles[0];
-        } else {
-            AppState.activeVehicle = null;
+        const [deletedVehicle] = AppState.vehicles.splice(index, 1);
+        if (AppState.activeVehicle?.id === deletedVehicle.id) {
+            AppState.activeVehicle = AppState.vehicles[0] || null;
         }
         
         saveUserData();
@@ -1202,6 +1853,8 @@ function showVehicleModal() {
         alert('You can only add up to 3 vehicles');
         return;
     }
+    document.getElementById('vehicle-modal-title').textContent =
+        AppState.editingVehicleIndex === undefined ? 'Add a vehicle' : 'Edit vehicle';
     document.getElementById('vehicle-modal').classList.add('active');
 }
 
@@ -1210,6 +1863,8 @@ function closeVehicleModal() {
     document.getElementById('vehicle-form').reset();
     document.getElementById('ev-fields').classList.add('hidden');
     document.getElementById('truck-fields').classList.add('hidden');
+    AppState.editingVehicleIndex = undefined;
+    document.getElementById('vehicle-modal-title').textContent = 'Add a vehicle';
 }
 
 function updateVehicleFields() {
@@ -1231,7 +1886,9 @@ function handleAddVehicle(event) {
     event.preventDefault();
 
     const vehicle = {
-        id: Date.now(),
+        id: AppState.editingVehicleIndex !== undefined
+            ? AppState.vehicles[AppState.editingVehicleIndex]?.id
+            : Date.now(),
         type: document.getElementById('vehicle-type').value,
         brand: document.getElementById('vehicle-brand').value,
         plate: document.getElementById('vehicle-plate').value
@@ -1252,8 +1909,12 @@ function handleAddVehicle(event) {
 
     // Check if editing or adding
     if (AppState.editingVehicleIndex !== undefined) {
-        const wasActive = AppState.activeVehicle &&
-            AppState.activeVehicle.id === AppState.vehicles[AppState.editingVehicleIndex].id;
+        const previousVehicle = AppState.vehicles[AppState.editingVehicleIndex];
+        if (!previousVehicle) {
+            closeVehicleModal();
+            return;
+        }
+        const wasActive = AppState.activeVehicle?.id === previousVehicle.id;
         AppState.vehicles[AppState.editingVehicleIndex] = vehicle;
         if (wasActive) {
             AppState.activeVehicle = vehicle;
@@ -1274,6 +1935,7 @@ function handleAddVehicle(event) {
 }
 
 function selectVehicle(index) {
+    if (!AppState.vehicles[index]) return;
     AppState.activeVehicle = AppState.vehicles[index];
     saveUserData();
     updateUI();
@@ -1373,33 +2035,39 @@ function saveSelectedPlace() {
 
 // Voice AI Overlay Functions
 function openVoiceAIOverlay() {
-    document.getElementById('voice-ai-overlay').classList.remove('hidden');
+    const overlay = document.getElementById('voice-ai-overlay');
+    overlay.classList.remove('hidden');
+    document.getElementById('voice-ai-text-input').focus();
 }
 
 function closeVoiceAIOverlay() {
     document.getElementById('voice-ai-overlay').classList.add('hidden');
+    if (AppState.voiceRecognition) {
+        AppState.voiceRecognition.stop();
+        AppState.voiceRecognition = null;
+    }
+    AppState.isVoiceActive = false;
+    document.getElementById('voice-ai-status').textContent = 'Type a travel question, or use voice if your browser supports it.';
 }
 
 function handleVoiceAIKeypress(event) {
     if (event.key === 'Enter') {
+        event.preventDefault();
         sendVoiceAIMessage();
     }
 }
 
-function sendVoiceAIMessage() {
+async function sendVoiceAIMessage() {
     const input = document.getElementById('voice-ai-text-input');
     const message = input.value.trim();
-    
     if (!message) return;
-    
+
     addVoiceAIMessage(message, 'user');
     input.value = '';
-    
-    // Simulate AI response
-    setTimeout(() => {
-        const response = processVoiceQuery(message);
-        addVoiceAIMessage(response, 'ai');
-    }, 500);
+    document.getElementById('voice-ai-status').textContent = 'Checking available route and place data…';
+    const response = await processVoiceQuery(message);
+    addVoiceAIMessage(response, 'ai');
+    document.getElementById('voice-ai-status').textContent = 'Demo assistant · answers use available app data, not a live AI model.';
 }
 
 function addVoiceAIMessage(text, type) {
@@ -1418,55 +2086,107 @@ function addVoiceAIMessage(text, type) {
     conversation.scrollTop = conversation.scrollHeight;
 }
 
-function processVoiceQuery(query) {
+async function processVoiceQuery(query) {
     const lowerQuery = query.toLowerCase();
-    
-    if (lowerQuery.includes('rain') || lowerQuery.includes('hujan')) {
-        return "I checked the weather along your route. Rain is expected approximately 2 kilometers ahead. Please prepare for wet conditions.";
-    } else if (lowerQuery.includes('restaurant') || lowerQuery.includes('makan') || lowerQuery.includes('warung')) {
-        return "I found several restaurants and warungs nearby. Would you like me to show you the closest ones or the highest-rated?";
-    } else if (lowerQuery.includes('missed') || lowerQuery.includes('lewat')) {
-        return "No problem! I'm recalculating your route now.";
-    } else if (lowerQuery.includes('station') || lowerQuery.includes('stasiun')) {
-        return "The nearest train station is approximately 2.5 kilometers from your current location.";
-    } else {
-        return "I understand. How else can I help you with your journey?";
+
+    if (lowerQuery.includes('rain') || lowerQuery.includes('hujan') || lowerQuery.includes('weather') || lowerQuery.includes('cuaca')) {
+        const weather = AppState.routeWeather;
+        if (weather?.status === 'ready' && weather.rainPoints.length) {
+            const point = weather.rainPoints[0];
+            return `The Open-Meteo forecast shows possible rain about ${point.distanceKm.toFixed(1)} km along your planned route, in roughly ${point.etaMinutes} minutes. It is an estimate, not a road observation.`;
+        }
+        if (weather?.status === 'ready') {
+            return 'No rain signal appeared at the three sampled points on your planned route during its estimated travel time. This is not a guarantee of clear weather.';
+        }
+        if (weather?.status === 'loading') return 'The route forecast is still loading. Please try again in a moment.';
+        if (weather?.status === 'unavailable') return 'Live route weather is currently unavailable. Check a local forecast before travelling.';
+        return 'Plan a route first and I can check the public hourly forecast at several points along it.';
     }
+
+    if (lowerQuery.includes('missed') || lowerQuery.includes('lewat') || lowerQuery.includes('alternative route')) {
+        return 'This demo cannot detect missed turns or reroute live. Use the route search to request a fresh road route, and follow local road signs.';
+    }
+
+    if (lowerQuery.includes('route') || lowerQuery.includes('direction') || lowerQuery.includes('arah') || lowerQuery.includes('navigate')) {
+        if (AppState.selectedRoute && AppState.selectedDestination) {
+            return `Your current ${AppState.selectedRoute.real ? 'road route' : 'estimated route'} is to ${AppState.selectedDestination.name}: ${AppState.selectedRoute.distance}, about ${AppState.selectedRoute.time}.`;
+        }
+        return 'Set a destination in the map search or choose a place from a city guide to preview a route.';
+    }
+
+    const keywordCategory = [
+        { keys: ['restaurant', 'makan', 'warung', 'food', 'cafe', 'coffee'], id: 'restaurants' },
+        { keys: ['hospital', 'clinic', 'pharmacy', 'apotek', 'doctor'], id: 'hospitals' },
+        { keys: ['fuel', 'gas station', 'bensin', 'spbu'], id: 'fuel' },
+        { keys: ['charging', 'charger', 'ev'], id: 'ev-charging' },
+        { keys: ['station', 'stasiun', 'train'], id: 'train-stations' },
+        { keys: ['bus'], id: 'bus-stations' },
+        { keys: ['parking', 'parkir'], id: 'parking' },
+        { keys: ['hotel', 'penginapan'], id: 'hotels' }
+    ].find(item => item.keys.some(key => lowerQuery.includes(key)));
+
+    if (keywordCategory) {
+        const category = placeCategories.find(item => item.id === keywordCategory.id);
+        const center = AppState.currentLocation || AppState.selectedCity;
+        if (!center) return 'Allow location access or select a city so I can search nearby places.';
+        try {
+            const places = await fetchOpenStreetMapPlaces(category, center, 5000);
+            if (!places.length) return `OpenStreetMap has no mapped ${category.label.toLowerCase()} within 5 km of your location.`;
+            const closest = places.slice(0, 3).map(place => `${place.name} (${place.distance} km)`).join('; ');
+            return `Closest mapped ${category.label.toLowerCase()}: ${closest}. Hours may be missing; verify before visiting.`;
+        } catch (error) {
+            console.error('Assistant place search failed:', error);
+            return 'Nearby place search is unavailable right now. You can try again from the city guide.';
+        }
+    }
+
+    if (lowerQuery.includes('emergency') || lowerQuery.includes('accident') || lowerQuery.includes('darurat')) {
+        return 'This demo is not connected to emergency services or live incident reports. Contact local emergency services directly if you need urgent help.';
+    }
+
+    return 'I can answer about the route you selected, check its available weather forecast, or search nearby restaurants, hospitals, fuel, charging, stations, parking, and hotels.';
 }
 
 function toggleVoiceOverlay() {
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         const recognition = new SpeechRecognition();
-        
+        AppState.voiceRecognition = recognition;
         recognition.lang = voiceLanguageCodes[currentVoiceLanguage] || 'id-ID';
         recognition.continuous = false;
-        
+        recognition.interimResults = false;
+        recognition.onstart = () => {
+            AppState.isVoiceActive = true;
+            document.getElementById('voice-ai-status').textContent = 'Listening…';
+        };
         recognition.onresult = (event) => {
             const transcript = event.results[0][0].transcript;
             document.getElementById('voice-ai-text-input').value = transcript;
             sendVoiceAIMessage();
         };
-        
-        recognition.start();
+        recognition.onerror = (event) => {
+            document.getElementById('voice-ai-status').textContent =
+                event.error === 'not-allowed'
+                    ? 'Microphone permission was denied. Type your question instead.'
+                    : `Voice input unavailable (${event.error}). Type your question instead.`;
+        };
+        recognition.onend = () => {
+            AppState.isVoiceActive = false;
+            AppState.voiceRecognition = null;
+            if (!document.getElementById('voice-ai-overlay').classList.contains('hidden') &&
+                document.getElementById('voice-ai-status').textContent === 'Listening…') {
+                document.getElementById('voice-ai-status').textContent = 'Voice input ended. You can type or try again.';
+            }
+        };
+        try {
+            recognition.start();
+        } catch (error) {
+            console.error('Voice recognition could not start:', error);
+            document.getElementById('voice-ai-status').textContent = 'Voice input could not start. Type your question instead.';
+        }
     } else {
-        alert('Voice recognition not supported in this browser');
+        document.getElementById('voice-ai-status').textContent = 'Voice recognition is not supported in this browser. You can type your question.';
     }
-}
-
-// Redesigned Rain Alert
-function showRainAlert() {
-    const alertCard = document.getElementById('rain-alert-card');
-    alertCard.classList.remove('hidden');
-    
-    // Auto-dismiss after 10 seconds
-    setTimeout(() => {
-        dismissRainAlert();
-    }, 10000);
-}
-
-function dismissRainAlert() {
-    document.getElementById('rain-alert-card').classList.add('hidden');
 }
 const voiceSamplePhrases = {
     'id': [
@@ -1574,16 +2294,13 @@ function handlePremiumUpgrade() {
 
 // Update Location Status in Settings
 function updateLocationStatus() {
-    const statusText = document.getElementById('location-status-text');
-    if (!statusText) return;
-
-    if (AppState.currentLocation) {
-        statusText.textContent = 'Granted';
-        statusText.style.color = 'var(--success)';
-    } else {
-        statusText.textContent = 'Not Granted';
-        statusText.style.color = 'var(--danger)';
-    }
+    const status = AppState.currentLocation
+        ? `Available · ±${Math.round(AppState.currentLocation.accuracy || 0)} m`
+        : AppState.locationError || 'Waiting for permission';
+    document.querySelectorAll('[data-location-status]').forEach(statusText => {
+        statusText.textContent = status;
+        statusText.style.color = AppState.currentLocation ? 'var(--success)' : 'var(--danger)';
+    });
 }
 
 function toggleVoice() {

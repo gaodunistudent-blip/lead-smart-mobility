@@ -6,13 +6,14 @@ LEAD is a responsive mobility-planning prototype for exploring Indonesian cities
 
 ## Features
 
-- Interactive OpenStreetMap map with optional browser geolocation.
-- City guides and sample local places across 14 Indonesian cities.
-- Place search and route planning using public OpenStreetMap services.
+- Interactive OpenStreetMap maps with browser geolocation, map markers, and city-scoped place results.
+- City guides for 14 Indonesian cities, with 60+ searchable place categories and distance/opening-hours filters.
+- Place search and road-route previews using public Nominatim and OSRM services; estimated routes are labeled when live routing is unavailable.
+- Current local weather and approximate route forecasts from Open-Meteo. Route forecasts sample three points and are not road-sensor alerts.
 - Vehicle profiles, saved places, and journey history stored in the browser.
 - English and Bahasa Indonesia interface.
-- Voice-input interface where supported by the browser, plus a demo text assistant.
-- Responsive layouts for desktop and mobile.
+- A floating travel assistant with contextual route/place information, demo-generated text responses, and optional browser speech recognition.
+- Responsive layouts with a red-and-white visual theme and mobile bottom navigation.
 
 ## Quick start
 
@@ -82,10 +83,11 @@ Vercel can also detect these settings automatically from the `package.json` scri
 ## Data, privacy, and prototype limitations
 
 - There is no backend. Demo profile data, vehicles, saved places, language preference, and journey history are stored in this browser's `localStorage`.
-- Sign-in, registration, premium features, weather, and assistant responses are demonstrations; do not enter real passwords or sensitive information.
-- Search and routing send requests to public OpenStreetMap-based services. Their availability and coverage are not guaranteed, and their public endpoints may impose usage limits. Use a properly provisioned service for production traffic.
+- Sign-in, registration, and premium features are demonstrations; do not enter real passwords or sensitive information. The assistant is not a live AI service.
+- Place search, geocoding, routing, weather, and map tiles use public Photon, Nominatim, OSRM, Open-Meteo, and OpenStreetMap services. Availability, coverage, and freshness are not guaranteed; public endpoints may impose usage limits. Use properly provisioned services for production traffic.
 - Map tiles require an internet connection and include OpenStreetMap attribution. Location and microphone features require browser permission; browser support varies.
-- Routes and sample place details are informational prototypes, not guaranteed navigation or live business data.
+- Route weather checks sample three forecast points and may miss local conditions; they are informational only, not safety warnings. Follow local road signs and verify forecasts independently.
+- Curated city-guide entries are examples. OpenStreetMap opening hours can be missing or incomplete, and unknown hours are labeled rather than treated as open.
 
 ## Technology and attribution
 
